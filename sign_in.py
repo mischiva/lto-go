@@ -11,7 +11,7 @@ def main(page: ft.Page):
 
     def go_to_home(e):
         page.controls.clear()
-        home_main(page)
+        home_main(page, sidebar_open=False)
         page.update()
 
     layout = ft.Row(
@@ -113,4 +113,6 @@ def main(page: ft.Page):
 
     page.add(layout)
 
-ft.app(target=main)
+
+if __name__ == "__main__":
+    ft.app(target=main)

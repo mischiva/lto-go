@@ -77,7 +77,7 @@ REPORTS_IMAGE = "media/report.png"
 
 
 def build_card_content(title: str, description: str, image_path: str) -> ft.Container:
-    # Builds the visual PNG card with title and description text.
+    # Builds the visual PNG card with title and description text
     return ft.Container(
         content=ft.Stack(
             controls=[
@@ -116,7 +116,7 @@ def build_card_content(title: str, description: str, image_path: str) -> ft.Cont
 
 
 def build_card_overlay_button(on_click) -> ft.Container:
-    # Full-size invisible click layer with hover overlay tint.
+    # Full-size invisible click layer with hover overlay tint
     overlay_button = ft.Container(
         expand=True,
         height=CARD_HEIGHT,

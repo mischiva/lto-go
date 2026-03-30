@@ -1,22 +1,30 @@
 import flet as ft
 from styles.fonts import GOOGLE_FONTS
 from styles import home_styles as s
+from sidebar import build_sidebar, toggle_sidebar
 from driver import main as driver_main
 from vehicle import main as vehicle_main
 from registration import main as registration_main
 from violation import main as violation_main
 from reports import main as reports_main
 
-def main(page: ft.Page):
+
+def main(page: ft.Page, sidebar_open=False):
     # Page
     page.bgcolor = s.PAGE_BGCOLOR
     page.padding = s.PAGE_PADDING
     page.fonts = GOOGLE_FONTS
 
     # Navigation
-    def go_to(screen_main):
+    def go_to(screen_main, keep_sidebar_open=False):
         page.controls.clear()
-        screen_main(page)
+        screen_main(page, sidebar_open=keep_sidebar_open)
+        page.update()
+
+    def go_to_sign_in():
+        from sign_in import main as sign_in_main
+        page.controls.clear()
+        sign_in_main(page)
         page.update()
 
     # Card builder
@@ -95,14 +103,16 @@ def main(page: ft.Page):
     )
 
     # Welcome header
+    menu_button = ft.IconButton(
+        icon=ft.icons.Icons.MENU,
+        icon_size=28,
+        icon_color=ft.Colors.BLACK,
+    )
+    
     header = ft.Container(
         content=ft.Row(
             controls=[
-                ft.IconButton(
-                    icon=ft.icons.Icons.MENU,
-                    icon_size=28,
-                    icon_color=ft.Colors.BLACK,
-                ),
+                menu_button,
                 ft.Column(
                     controls=[
                         ft.Text(
@@ -144,10 +154,45 @@ def main(page: ft.Page):
         spacing=0,
     )
 
-    page.add(
-        ft.Container(
-            content=layout,
-            padding=s.PAGE_CONTENT_PADDING,
-            expand=True,
-        )
+    # Build sidebar
+    def on_menu_item_click(item_name):
+        # Handle menu item clicks
+        if item_name == "__close__":
+            toggle_sidebar(sidebar)
+            return
+        if item_name == "Sign out":
+            go_to_sign_in()
+        elif item_name == "Home":
+            page.update()
+        elif item_name == "Driver":
+            go_to(driver_main, keep_sidebar_open=True)
+        elif item_name == "Vehicle":
+            go_to(vehicle_main, keep_sidebar_open=True)
+        elif item_name == "Registration":
+            go_to(registration_main, keep_sidebar_open=True)
+        elif item_name == "Violation":
+            go_to(violation_main, keep_sidebar_open=True)
+        elif item_name == "Generate reports":
+            go_to(reports_main, keep_sidebar_open=True)
+        page.update()
+
+    sidebar = build_sidebar(page, on_menu_item_click, current_screen="Home", is_open=sidebar_open)
+    
+    menu_button.on_click = lambda e: (toggle_sidebar(sidebar), page.update())
+
+    main_content = ft.Container(
+        content=layout,
+        padding=s.PAGE_CONTENT_PADDING,
+        expand=True,
     )
+
+    # place it on top
+    page_stack = ft.Stack(
+        controls=[
+            main_content,
+            sidebar,
+        ],
+        expand=True,
+    )
+
+    page.add(page_stack)
