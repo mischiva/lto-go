@@ -96,22 +96,35 @@ def main(page: ft.Page):
 
     # Welcome header
     header = ft.Container(
-        content=ft.Column(
+        content=ft.Row(
             controls=[
-                ft.Text(
-                    "Welcome!",
-                    style=s.HEADER_TITLE_STYLE,
-                    text_align=ft.TextAlign.CENTER,
+                ft.IconButton(
+                    icon=ft.icons.Icons.MENU,
+                    icon_size=28,
+                    icon_color=ft.Colors.BLACK,
                 ),
-                ft.Text(
-                    "What would you like to do today?",
-                    style=s.HEADER_SUBTITLE_STYLE,
-                    text_align=ft.TextAlign.CENTER,
+                ft.Column(
+                    controls=[
+                        ft.Text(
+                            "Welcome!",
+                            style=s.HEADER_TITLE_STYLE,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                        ft.Text(
+                            "What would you like to do today?",
+                            style=s.HEADER_SUBTITLE_STYLE,
+                            text_align=ft.TextAlign.CENTER,
+                        ),
+                    ],
+                    horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                    spacing=s.HEADER_TEXT_SPACING,
+                    tight=True,
+                    expand=True,
                 ),
             ],
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
-            spacing=s.HEADER_TEXT_SPACING,
-            tight=True,
+            alignment=ft.MainAxisAlignment.START,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=10,
         ),
         alignment=ft.alignment.Alignment(0, 0),
         width=float("inf"),
