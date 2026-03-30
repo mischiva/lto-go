@@ -1,12 +1,18 @@
 import flet as ft
 from styles.fonts import GOOGLE_FONTS
 from styles import sign_in_styles as s
+from home import main as home_main
 
 def main(page: ft.Page):
     page.title = s.PAGE_TITLE
     page.bgcolor = s.PAGE_BGCOLOR
     page.padding = s.PAGE_PADDING
     page.fonts = GOOGLE_FONTS
+
+    def go_to_home(e):
+        page.controls.clear()
+        home_main(page)
+        page.update()
 
     layout = ft.Row(
         controls=[
@@ -83,6 +89,7 @@ def main(page: ft.Page):
                                             width=s.BUTTON_WIDTH,
                                             height=s.BUTTON_HEIGHT,
                                             style=s.BUTTON_STYLE,
+                                            on_click=go_to_home,
                                         ),
                                     ],
                                     alignment=ft.MainAxisAlignment.CENTER,
