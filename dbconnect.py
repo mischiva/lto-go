@@ -9,7 +9,7 @@ conn_params = {
 }
 
 # READ TABLE
-def read_tbl(tblname):
+def read_table(table_name):
     try:
         conn = psycopg2.connect(**conn_params)
         cur = conn.cursor()
@@ -30,7 +30,7 @@ def read_tbl(tblname):
         print("Error running query:", e)
 
 # ADD
-def insert_into_tbl(tblname, data):
+def insert_into_table(table_name, data):
     try:
         conn = psycopg2.connect(**conn_params)
         cur = conn.cursor()

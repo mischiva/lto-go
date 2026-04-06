@@ -18,7 +18,9 @@ from styles.driver_styles import (
     DANGER_BUTTON_STYLE,
 )
 
-from dbconnect import read_tbl, insert_into_tbl
+from dbconnect import read_table, insert_into_table
+# read_table(table_name)
+# insert_into_table(table_name, data)
 
 def main(page: ft.Page, sidebar_open=False):
     page.bgcolor = "white"
