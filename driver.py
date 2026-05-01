@@ -1,5 +1,6 @@
 import flet as ft
 import datetime
+import db
 from sidebar import build_sidebar, toggle_sidebar
 from styles.fonts import GOOGLE_FONTS
 from styles.driver_styles import (
@@ -191,62 +192,190 @@ def main(page: ft.Page, sidebar_open=False):
         form_box.visible = False
         page.update()
 
+    def loadTable(search="", license_type="", license_status="", sex=""):
+        rows = db.getDrivers(search, license_type, license_status, sex)
+        table.rows.clear()
+        for r in rows:
+            license_no   = r["license_no"]
+            full_name    = r["full_name"]
+            dob          = str(r["dob"])
+            age          = str(r["age"])
+            sex_val      = r["sex"].strip()
+            ltype        = r["license_type"]
+            lstatus      = r["license_status"]
+            expires      = str(r["license_expire"])
+            type_display = {"Non-Professional": "NP", "Professional": "P", "Student": "SP"}.get(ltype, ltype)
+            table.rows.append(
+                ft.DataRow(cells=[
+                    ft.DataCell(ft.Text(license_no,   style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(full_name,    style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(dob,          style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(age,          style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(sex_val,      style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(type_display, style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(lstatus,      style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(expires,      style=TABLE_DATA_STYLE)),
+                    ft.DataCell(
+                        ft.Row(controls=[
+                            ft.Button(
+                                content=ft.Text("Edit", color="white", size=12, weight=ft.FontWeight.W_700),
+                                on_click=lambda e, ln=license_no: on_edit_click(ln),
+                                style=BLUE_BUTTON_STYLE,
+                                height=32,
+                            ),
+                            ft.Button(
+                                content=ft.Text("Delete", color="white", size=12, weight=ft.FontWeight.W_700),
+                                on_click=lambda e, ln=license_no: on_delete_click(ln),
+                                style=DANGER_BUTTON_STYLE,
+                                height=32,
+                            ),
+                        ], spacing=6, tight=True)
+                    ),
+                ])
+            )
+        table.update()
+
+    def collect_form_data():
+        def date_val(row): return row.controls[0].content.value or ""
+        def sex_raw(dd):   return dd.value.split(" - ")[0] if dd.value else ""
+        return {
+            "license_no":     f_license_no.value or "",
+            "last_name":      f_last_name.value or "",
+            "first_name":     f_first_name.value or "",
+            "middle_name":    f_middle_name.value or None,
+            "suffix":         f_suffix.value or None,
+            "dob":            date_val(f_dob),
+            "sex":            sex_raw(f_sex),
+            "license_type":   f_license_type.value or "",
+            "license_status": f_license_status.value or "",
+            "license_issued": date_val(f_issued),
+            "license_expire": date_val(f_expiry),
+        }
+
+    def filterDrivers(): # function that runs on click of filter button
+        search = searchInput.value or "" # gets the value of the search input, or empty string if nothing is entered
+
+        typeMap = { # since what's written is different from database format, this map is to ensure that it is the same
+            "NP - Non-Professional": "Non-Professional",
+            "P - Professional":"Professional",
+            "SP - Student Permit":"Student",
+        }
+        sexMap = {
+            "M": "M",
+            "F": "F",
+        }
+        licenseStatusMap = {
+            "Valid":     "Valid",
+            "Expired":   "Expired",
+            "Suspended": "Suspended",
+            "Revoked":   "Revoked",
+        }
+
+        licenseType = typeMap.get(typeInput.value, "") # gets map, if not in map (for example, all licenses) returns an empty string
+        sex = sexMap.get(sexInput.value, "")
+        licenseStatus =licenseStatusMap.get(statusInput.value, "")
+
+        loadTable(search, licenseType, licenseStatus, sex) # loads table again, but this time with updated filter parameters
+
+    def on_save_click(e):
+        data = collect_form_data()
+        try:
+            if editing_license_no["value"]:
+                db.updateDriver(editing_license_no["value"], data)
+            else:
+                db.addDriver(data)
+            hide_edit_form()
+            loadTable()
+        except Exception as ex:
+            print("DB error:", ex)
+
+    def on_edit_click(license_no):
+        row = db.getDriver(license_no)
+        if not row:
+            return
+        editing_license_no["value"] = license_no
+        f_last_name.value      = row["last_name"]
+        f_first_name.value     = row["first_name"]
+        f_middle_name.value    = row["middle_name"] or ""
+        f_suffix.value         = row["suffix"] or ""
+        f_license_no.value     = row["license_no"]
+        f_sex.value            = "M - Male" if row["sex"].strip() == "M" else "F - Female"
+        f_license_type.value   = row["license_type"]
+        f_license_status.value = row["license_status"]
+        f_dob.controls[0].content.value    = str(row["dob"])
+        f_issued.controls[0].content.value = str(row["license_issued"])
+        f_expiry.controls[0].content.value = str(row["license_expire"])
+        show_edit_form()
+        page.update()
+
+    def on_delete_click(license_no):
+        db.deleteDriver(license_no)
+        loadTable()
+
+    searchInput=ft.TextField(
+        hint_text="Search by license no. or name",
+        prefix_icon=ft.Icons.SEARCH,
+        height=46,
+        color=COLOR_TEXT_PRIMARY,
+        text_style=ft.TextStyle(
+            font_family="Lato",
+            size=14,
+            weight=ft.FontWeight.W_500,
+            color=COLOR_TEXT_PRIMARY,
+        ),
+        hint_style=ft.TextStyle(
+            font_family="Lato",
+            size=14,
+            color=COLOR_TEXT_HINT,
+        ),
+        filled=True,
+        fill_color=COLOR_FIELD_FILL,
+        border_color=COLOR_BORDER,
+        focused_border_color=COLOR_PRIMARY,
+        border_radius=12,
+        content_padding=ft.padding.symmetric(horizontal=14, vertical=0),
+    )
+    
+    typeInput=dropdown_input([
+        "All license types",
+        "NP - Non-Professional",
+        "P - Professional",
+        "SP - Student Permit",
+    ])
+
+    statusInput=dropdown_input([
+        "All statuses",
+        "Valid",
+        "Expired",
+        "Suspended",
+        "Revoked",
+    ])
+    
+    sexInput=dropdown_input([
+        "All sex",
+        "M",
+        "F",
+    ])
+
     filters_row = ft.ResponsiveRow(
         columns=12,
         run_spacing=10,
         controls=[
             ft.Container(
                 col={"xs": 12, "md": 3},
-                content=ft.TextField(
-                    hint_text="Search by license no. or name",
-                    prefix_icon=ft.Icons.SEARCH,
-                    height=46,
-                    color=COLOR_TEXT_PRIMARY,
-                    text_style=ft.TextStyle(
-                        font_family="Lato",
-                        size=14,
-                        weight=ft.FontWeight.W_500,
-                        color=COLOR_TEXT_PRIMARY,
-                    ),
-                    hint_style=ft.TextStyle(
-                        font_family="Lato",
-                        size=14,
-                        color=COLOR_TEXT_HINT,
-                    ),
-                    filled=True,
-                    fill_color=COLOR_FIELD_FILL,
-                    border_color=COLOR_BORDER,
-                    focused_border_color=COLOR_PRIMARY,
-                    border_radius=12,
-                    content_padding=ft.padding.symmetric(horizontal=14, vertical=0),
-                ),
+                content=searchInput
             ),
             ft.Container(
                 col={"xs": 12, "sm": 4, "md": 2},
-                content=dropdown_input([
-                    "All license types",
-                    "NP - Non-Professional",
-                    "P - Professional",
-                    "SP - Student Permit",
-                ]),
+                content=typeInput
             ),
             ft.Container(
                 col={"xs": 12, "sm": 4, "md": 2},
-                content=dropdown_input([
-                    "All statuses",
-                    "Valid",
-                    "Expired",
-                    "Suspended",
-                    "Revoked",
-                ]),
+                content=statusInput
             ),
             ft.Container(
                 col={"xs": 12, "sm": 4, "md": 2},
-                content=dropdown_input([
-                    "All sex",
-                    "M",
-                    "F",
-                ]),
+                content=sexInput
             ),
             ft.Container(
                 col={"xs": 6, "md": 1},
@@ -270,7 +399,7 @@ def main(page: ft.Page, sidebar_open=False):
                     style=BLUE_BUTTON_STYLE,
                     height=46,
                     width=float("inf"),
-                    on_click=lambda e: None,
+                    on_click=filterDrivers,
                 ),
             ),
             ft.Container(
@@ -307,54 +436,15 @@ def main(page: ft.Page, sidebar_open=False):
         columns=[
             ft.DataColumn(label=ft.Text("License no.", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Full name", style=TABLE_HEADER_STYLE)),
-            ft.DataColumn(label=ft.Text("DOB", style=TABLE_HEADER_STYLE)),
+            ft.DataColumn(label=ft.Text("Date of birth", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Age", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Sex", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Type", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Status", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Expires", style=TABLE_HEADER_STYLE)),
-            ft.DataColumn(label=ft.Text("ACTIONS", style=TABLE_HEADER_STYLE)),
+            ft.DataColumn(label=ft.Text("", style=TABLE_HEADER_STYLE)),
         ],
-        rows=[
-            ft.DataRow(
-                cells=[
-                    # PLACEHOLDER ================================================================
-                    # PLACEHOLDER ================================================================
-                    # PLACEHOLDER ================================================================
-                    # PLACEHOLDER ================================================================
-                    # PLACEHOLDER ================================================================
-                    # PLACEHOLDER ================================================================
-                    ft.DataCell(ft.Text("N01-23-456789", style=TABLE_DATA_STYLE)),
-                    ft.DataCell(ft.Text("Dela Cruz, Juan M.", style=TABLE_DATA_STYLE)),
-                    ft.DataCell(ft.Text("1990-04-12", style=TABLE_DATA_STYLE)),
-                    ft.DataCell(ft.Text("35", style=TABLE_DATA_STYLE)),
-                    ft.DataCell(ft.Text("M", style=TABLE_DATA_STYLE)),
-                    ft.DataCell(ft.Text("NP", style=TABLE_DATA_STYLE)),
-                    ft.DataCell(ft.Text("Valid", style=TABLE_DATA_STYLE)),
-                    ft.DataCell(ft.Text("2027-03-15", style=TABLE_DATA_STYLE)),
-                    ft.DataCell(
-                        ft.Row(
-                            controls=[
-                                ft.Button(
-                                    content=ft.Text("Edit", color="white", size=12, weight=ft.FontWeight.W_700),
-                                    on_click=show_edit_form,
-                                    style=BLUE_BUTTON_STYLE,
-                                    height=32,
-                                ),
-                                ft.Button(
-                                    content=ft.Text("Delete", color="white", size=12, weight=ft.FontWeight.W_700),
-                                    on_click=lambda e: None,
-                                    style=DANGER_BUTTON_STYLE,
-                                    height=32,
-                                ),
-                            ],
-                            spacing=6,
-                            tight=True,
-                        )
-                    ),
-                ]
-            ),
-        ],
+        rows=[],
     )
 
     table_block = ft.Container(
@@ -513,3 +603,5 @@ def main(page: ft.Page, sidebar_open=False):
             expand=True,
         )
     )
+
+    loadTable()
