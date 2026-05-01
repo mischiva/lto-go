@@ -170,7 +170,22 @@ def main(page: ft.Page, sidebar_open=False):
     form_title = ft.Text("Add driver", style=SECTION_TITLE_STYLE)
     primary_action_label = ft.Text("Save", color="white", weight=ft.FontWeight.W_700)
 
-    def show_add_form(e=None):
+    def addForm(e=None):
+        editingLicenseNo["value"] = None
+
+        # clear all fields
+        fLastName.value      = ""
+        fFirstName.value     = ""
+        fMiddleName.value    = ""
+        fSuffix.value        = ""
+        fLicenseNo.value     = ""
+        fSex.value           = "M - Male"
+        fLicenseType.value   = "Non-Professional"
+        fLicenseStatus.value = "Valid"
+        fDob.controls[0].content.value           = ""
+        fLicenseIssued.controls[0].content.value = ""
+        fLicenseExpiry.controls[0].content.value = ""
+
         form_title.value = "Add driver"
         primary_action_label.value = "Save"
         form_box.visible = True
@@ -180,9 +195,9 @@ def main(page: ft.Page, sidebar_open=False):
         if form_box.visible and form_title.value == "Add driver":
             hide_edit_form()
             return
-        show_add_form()
+        addForm()
 
-    def show_edit_form(e=None):
+    def editForm(): # just shows the edit form, nothing else
         form_title.value = "Edit driver"
         primary_action_label.value = "Update"
         form_box.visible = True
@@ -219,13 +234,13 @@ def main(page: ft.Page, sidebar_open=False):
                         ft.Row(controls=[
                             ft.Button(
                                 content=ft.Text("Edit", color="white", size=12, weight=ft.FontWeight.W_700),
-                                on_click=lambda e, ln=license_no: on_edit_click(ln),
+                                on_click=lambda e, ln=license_no: editDriver(ln),
                                 style=BLUE_BUTTON_STYLE,
                                 height=32,
                             ),
                             ft.Button(
                                 content=ft.Text("Delete", color="white", size=12, weight=ft.FontWeight.W_700),
-                                on_click=lambda e, ln=license_no: on_delete_click(ln),
+                                on_click=lambda e, ln=license_no: deleteDriver(ln),
                                 style=DANGER_BUTTON_STYLE,
                                 height=32,
                             ),
@@ -235,24 +250,30 @@ def main(page: ft.Page, sidebar_open=False):
             )
         table.update()
 
-    def collect_form_data():
-        def date_val(row): return row.controls[0].content.value or ""
-        def sex_raw(dd):   return dd.value.split(" - ")[0] if dd.value else ""
+    def getFormData():
+        # date_input returns a Row — the actual TextField is inside controls[0].content
+        def getDate(dateRow):
+            return dateRow.controls[0].content.value or ""
+
+        # sex dropdown shows "M - Male" but db only needs "M"
+        def getSex(dropdown):
+            return dropdown.value.split(" - ")[0] if dropdown.value else ""
+
         return {
-            "license_no":     f_license_no.value or "",
-            "last_name":      f_last_name.value or "",
-            "first_name":     f_first_name.value or "",
-            "middle_name":    f_middle_name.value or None,
-            "suffix":         f_suffix.value or None,
-            "dob":            date_val(f_dob),
-            "sex":            sex_raw(f_sex),
-            "license_type":   f_license_type.value or "",
-            "license_status": f_license_status.value or "",
-            "license_issued": date_val(f_issued),
-            "license_expire": date_val(f_expiry),
+            "license_no":     fLicenseNo.value or "",
+            "last_name":      fLastName.value or "",
+            "first_name":     fFirstName.value or "",
+            "middle_name":    fMiddleName.value or None,
+            "suffix":         fSuffix.value or None,
+            "dob":            getDate(fDob),
+            "sex":            getSex(fSex),
+            "license_type":   fLicenseType.value or "",
+            "license_status": fLicenseStatus.value or "",
+            "license_issued": getDate(fLicenseIssued),
+            "license_expire": getDate(fLicenseExpiry),
         }
 
-    def filterDrivers(): # function that runs on click of filter button
+    def filterDrivers(e=None): # function that runs on click of filter button
         search = searchInput.value or "" # gets the value of the search input, or empty string if nothing is entered
 
         typeMap = { # since what's written is different from database format, this map is to ensure that it is the same
@@ -277,11 +298,11 @@ def main(page: ft.Page, sidebar_open=False):
 
         loadTable(search, licenseType, licenseStatus, sex) # loads table again, but this time with updated filter parameters
 
-    def on_save_click(e):
-        data = collect_form_data()
+    def saveDetails(e):
+        data = getFormData()
         try:
-            if editing_license_no["value"]:
-                db.updateDriver(editing_license_no["value"], data)
+            if editingLicenseNo["value"]:
+                db.updateDriver(editingLicenseNo["value"], data)
             else:
                 db.addDriver(data)
             hide_edit_form()
@@ -289,26 +310,27 @@ def main(page: ft.Page, sidebar_open=False):
         except Exception as ex:
             print("DB error:", ex)
 
-    def on_edit_click(license_no):
-        row = db.getDriver(license_no)
+    def editDriver(license_no): # edit driver doesn't actually edit, instead shows the forms that the user can change when they want to edit the driver's details
+        row = db.getDriver(license_no) # uses getDriver command from db.py to get the driver's details
         if not row:
             return
-        editing_license_no["value"] = license_no
-        f_last_name.value      = row["last_name"]
-        f_first_name.value     = row["first_name"]
-        f_middle_name.value    = row["middle_name"] or ""
-        f_suffix.value         = row["suffix"] or ""
-        f_license_no.value     = row["license_no"]
-        f_sex.value            = "M - Male" if row["sex"].strip() == "M" else "F - Female"
-        f_license_type.value   = row["license_type"]
-        f_license_status.value = row["license_status"]
-        f_dob.controls[0].content.value    = str(row["dob"])
-        f_issued.controls[0].content.value = str(row["license_issued"])
-        f_expiry.controls[0].content.value = str(row["license_expire"])
-        show_edit_form()
+        editingLicenseNo["value"] = license_no
+        fLastName.value = row["last_name"]
+        fFirstName.value = row["first_name"]
+        fMiddleName.value = row["middle_name"] or ""
+        fSuffix.value = row["suffix"] or ""
+        fLicenseNo.value = row["license_no"]
+        fSex.value = "M - Male" if row["sex"].strip() == "M" else "F - Female"
+        fLicenseType.value = row["license_type"]
+        fLicenseStatus.value = row["license_status"]
+        fDob.controls[0].content.value = str(row["dob"])
+        fLicenseIssued.controls[0].content.value = str(row["license_issued"])
+        fLicenseExpiry.controls[0].content.value = str(row["license_expire"])
+        
+        editForm()
         page.update()
 
-    def on_delete_click(license_no):
+    def deleteDriver(license_no):
         db.deleteDriver(license_no)
         loadTable()
 
@@ -482,6 +504,21 @@ def main(page: ft.Page, sidebar_open=False):
         bgcolor="white",
     )
 
+    # this field is for forms, we just assign them variable names so we can access it later on
+    fLastName      = text_input("e.g. Dela Cruz") 
+    fFirstName     = text_input("e.g. Juan")
+    fMiddleName    = text_input("e.g. Magtanggol")
+    fSuffix        = text_input("Jr., Sr., III")
+    fLicenseNo     = text_input("A00-00-000000")
+    fDob           = date_input("mm/dd/yyyy")
+    fSex           = dropdown_input(["M - Male", "F - Female"])
+    fLicenseType   = dropdown_input(["Non-Professional", "Professional", "Student"])
+    fLicenseStatus = dropdown_input(["Valid", "Expired", "Suspended", "Revoked"])
+    fLicenseIssued = date_input("mm/dd/yyyy")
+    fLicenseExpiry = date_input("mm/dd/yyyy")
+
+    editingLicenseNo = {"value": None}  # tracks which driver is being edited
+
     form_box = ft.Container(
         content=ft.Column(
             controls=[
@@ -519,17 +556,17 @@ def main(page: ft.Page, sidebar_open=False):
                     columns=12,
                     run_spacing=10,
                     controls=[
-                        labeled_field("Last name", text_input("e.g. Dela Cruz"), col=3),
-                        labeled_field("First name", text_input("e.g. Juan"), col=3),
-                        labeled_field("Middle name", text_input("e.g. Magtanggol"), col=3),
-                        labeled_field("Suffix", text_input("Jr., Sr., III"), col=3),
-                        labeled_field("License no.", text_input("A00-00-000000"), col=4),
-                        labeled_field("Date of birth", date_input("mm/dd/yyyy"), col=4),
-                        labeled_field("Sex", dropdown_input(["M - Male", "F - Female"]), col=4),
-                        labeled_field("License type", dropdown_input(["NP - Non-Professional", "P - Professional", "SP - Student Permit"]), col=4),
-                        labeled_field("License status", dropdown_input(["Valid", "Expired", "Suspended", "Revoked"]), col=4),
-                        labeled_field("License issued", date_input("mm/dd/yyyy"), col=4),
-                        labeled_field("License expiry", date_input("mm/dd/yyyy"), col=4),
+                        labeled_field("Last name", fLastName, col=3),
+                        labeled_field("First name", fFirstName, col=3),
+                        labeled_field("Middle name", fMiddleName, col=3),
+                        labeled_field("Suffix", fSuffix, col=3),
+                        labeled_field("License no.", fLicenseNo, col=4),
+                        labeled_field("Date of birth", fDob, col=4),
+                        labeled_field("Sex", fSex, col=4),
+                        labeled_field("License type", fLicenseType, col=4),
+                        labeled_field("License status", fLicenseStatus, col=4),
+                        labeled_field("License issued", fLicenseIssued, col=4),
+                        labeled_field("License expiry", fLicenseExpiry, col=4),
                     ],
                 ),
                 ft.Text("Address", style=SECTION_TITLE_STYLE),
@@ -548,7 +585,7 @@ def main(page: ft.Page, sidebar_open=False):
                         ft.Button(
                             content=primary_action_label,
                             style=BLUE_BUTTON_STYLE,
-                            on_click=lambda e: None,
+                            on_click=saveDetails
                         ),
                         ft.Button(
                             content=ft.Text("Delete", color="white", weight=ft.FontWeight.W_700),
