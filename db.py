@@ -30,7 +30,8 @@ def getDrivers(search="", license_type="", license_status="", sex=""):
     params = []
 
     if search: # if search is not empty
-        query += " AND (license_no ILIKE %s OR full_name ILIKE %s)" # creates sql query but doesn't insert just creates template
+        # PostgreSQL can't use SELECT aliases in WHERE, so we repeat the full_name expression
+        query += " AND (license_no ILIKE %s OR (last_name || ', ' || first_name || ' ' || LEFT(middle_name, 1) || '.') ILIKE %s)"
         params += [f"%{search}%", f"%{search}%"] # adds a layer of security to avoid sql injection
     if license_type: # if license_type is not empty
         query += " AND license_type = %s"
