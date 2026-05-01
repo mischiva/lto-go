@@ -276,6 +276,26 @@ def main(page: ft.Page, sidebar_open=False):
         ],
     )
 
+    sample_registration_data = [
+        {"reg_no": "REG-2025-001", "plate_no": "ABC 1234", "reg_date": "2025-01-10", "expiry_date": "2026-01-10", "status": "Active"},
+        {"reg_no": "REG-2025-002", "plate_no": "XYZ 5678", "reg_date": "2025-02-15", "expiry_date": "2026-02-15", "status": "Active"},
+        {"reg_no": "REG-2025-003", "plate_no": "DEF 9012", "reg_date": "2025-03-05", "expiry_date": "2026-03-05", "status": "Expired"},
+        {"reg_no": "REG-2025-004", "plate_no": "GHI 3456", "reg_date": "2025-04-12", "expiry_date": "2026-04-12", "status": "Suspended"},
+        {"reg_no": "REG-2025-005", "plate_no": "JKL 7890", "reg_date": "2025-05-20", "expiry_date": "2026-05-20", "status": "Active"},
+        {"reg_no": "REG-2025-006", "plate_no": "MNO 1357", "reg_date": "2025-06-30", "expiry_date": "2026-06-30", "status": "Expired"},
+        {"reg_no": "REG-2025-007", "plate_no": "PQR 2468", "reg_date": "2025-07-11", "expiry_date": "2026-07-11", "status": "Active"},
+        {"reg_no": "REG-2025-008", "plate_no": "STU 3690", "reg_date": "2025-08-02", "expiry_date": "2026-08-02", "status": "Suspended"},
+        {"reg_no": "REG-2025-009", "plate_no": "VWX 4812", "reg_date": "2025-09-18", "expiry_date": "2026-09-18", "status": "Active"},
+        {"reg_no": "REG-2025-010", "plate_no": "YZA 5924", "reg_date": "2025-10-25", "expiry_date": "2026-10-25", "status": "Active"},
+        {"reg_no": "REG-2025-011", "plate_no": "BCD 6035", "reg_date": "2025-11-07", "expiry_date": "2026-11-07", "status": "Expired"},
+        {"reg_no": "REG-2025-012", "plate_no": "EFG 7146", "reg_date": "2025-12-14", "expiry_date": "2026-12-14", "status": "Active"},
+    ]
+
+    current_page = {"value": 1}
+    items_per_page = {"value": 10}
+    total_items = {"value": len(sample_registration_data)}
+    all_rows_data = sample_registration_data.copy()  # Store all data for pagination
+
     table = ft.DataTable(
         border=ft.border.all(1, color_border),
         border_radius=12,
@@ -293,17 +313,154 @@ def main(page: ft.Page, sidebar_open=False):
             ft.DataColumn(label=ft.Text("Expiry date", style=table_header_style)),
             ft.DataColumn(label=ft.Text("Status", style=table_header_style)),
         ],
-        rows=[
-            ft.DataRow(
-                cells=[
-                    ft.DataCell(ft.Text("REG-2025-001", style=table_data_style)),
-                    ft.DataCell(ft.Text("ABC 1234", style=table_data_style)),
-                    ft.DataCell(ft.Text("2025-01-10", style=table_data_style)),
-                    ft.DataCell(ft.Text("2026-01-10", style=table_data_style)),
-                    ft.DataCell(ft.Text("Active", style=table_data_style)),
-                ]
-            ),
+        rows=[],
+    )
+
+    def loadTable(page=1, per_page=10):
+        """Load and display registration data using pagination"""
+        total_items["value"] = len(all_rows_data)
+
+        start_idx = (page - 1) * per_page
+        end_idx = min(start_idx + per_page, len(all_rows_data))
+        page_rows = all_rows_data[start_idx:end_idx]
+
+        table.rows.clear()
+        for row in page_rows:
+            table.rows.append(
+                ft.DataRow(
+                    cells=[
+                        ft.DataCell(ft.Text(row["reg_no"], style=table_data_style)),
+                        ft.DataCell(ft.Text(row["plate_no"], style=table_data_style)),
+                        ft.DataCell(ft.Text(row["reg_date"], style=table_data_style)),
+                        ft.DataCell(ft.Text(row["expiry_date"], style=table_data_style)),
+                        ft.DataCell(ft.Text(row["status"], style=table_data_style)),
+                    ]
+                )
+            )
+
+        update_pagination_controls()
+        table.update()
+
+    def update_pagination_controls():
+        total_pages = max(1, (total_items["value"] + items_per_page["value"] - 1) // items_per_page["value"])
+        page_info_text.value = f"Page {current_page['value']} of {total_pages} ({total_items['value']} total items)"
+        page_info_text.update()
+
+        prev_button.disabled = current_page["value"] <= 1
+        next_button.disabled = current_page["value"] >= total_pages
+        prev_button.update()
+        next_button.update()
+
+        page_buttons_container.controls.clear()
+        start_page = max(1, current_page["value"] - 2)
+        end_page = min(total_pages, start_page + 4)
+
+        if start_page > 1:
+            page_buttons_container.controls.append(
+                ft.TextButton("1", on_click=lambda e: go_to_page(1), style=ft.ButtonStyle(color=color_primary))
+            )
+            if start_page > 2:
+                page_buttons_container.controls.append(ft.Text("..."))
+
+        for page_num in range(start_page, end_page + 1):
+            is_current = page_num == current_page["value"]
+            page_buttons_container.controls.append(
+                ft.TextButton(
+                    str(page_num),
+                    on_click=lambda e, p=page_num: go_to_page(p),
+                    style=ft.ButtonStyle(
+                        color=color_primary if not is_current else "white",
+                        bgcolor=color_primary if is_current else ft.Colors.TRANSPARENT,
+                    ),
+                )
+            )
+
+        if end_page < total_pages:
+            if end_page < total_pages - 1:
+                page_buttons_container.controls.append(ft.Text("..."))
+            page_buttons_container.controls.append(
+                ft.TextButton(str(total_pages), on_click=lambda e: go_to_page(total_pages), style=ft.ButtonStyle(color=color_primary))
+            )
+
+        page_buttons_container.update()
+
+    def go_to_page(page_num):
+        current_page["value"] = page_num
+        loadTable(page_num, items_per_page["value"])
+
+    def change_items_per_page(e):
+        items_per_page["value"] = int(e.control.value)
+        current_page["value"] = 1
+        loadTable(1, items_per_page["value"])
+
+    def go_to_previous_page(e):
+        if current_page["value"] > 1:
+            go_to_page(current_page["value"] - 1)
+
+    def go_to_next_page(e):
+        total_pages = max(1, (total_items["value"] + items_per_page["value"] - 1) // items_per_page["value"])
+        if current_page["value"] < total_pages:
+            go_to_page(current_page["value"] + 1)
+
+    items_per_page_dropdown = ft.Dropdown(
+        value="10",
+        options=[
+            ft.DropdownOption("5"),
+            ft.DropdownOption("10"),
+            ft.DropdownOption("25"),
+            ft.DropdownOption("50"),
         ],
+        width=80,
+        height=40,
+        text_size=12,
+        on_select=change_items_per_page,
+        content_padding=ft.padding.symmetric(horizontal=8, vertical=0),
+    )
+
+    prev_button = ft.IconButton(
+        icon=ft.Icons.CHEVRON_LEFT,
+        icon_color=color_primary,
+        on_click=go_to_previous_page,
+        disabled=True,
+        tooltip="Previous page",
+    )
+
+    next_button = ft.IconButton(
+        icon=ft.Icons.CHEVRON_RIGHT,
+        icon_color=color_primary,
+        on_click=go_to_next_page,
+        disabled=True,
+        tooltip="Next page",
+    )
+
+    page_buttons_container = ft.Row(spacing=4, tight=True)
+
+    page_info_text = ft.Text(
+        "Page 1 of 1 (0 total items)",
+        size=12,
+        color=color_text_hint,
+        font_family="Lato",
+    )
+
+    pagination_controls = ft.Container(
+        content=ft.Row(
+            controls=[
+                ft.Text("Show:", size=12, color=color_text_hint, font_family="Lato"),
+                items_per_page_dropdown,
+                ft.Container(width=20),
+                prev_button,
+                page_buttons_container,
+                next_button,
+                ft.Container(width=20),
+                page_info_text,
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        padding=ft.padding.symmetric(horizontal=16, vertical=12),
+        border=ft.border.all(1, color_border),
+        border_radius=8,
+        bgcolor="#f8f9fa",
     )
 
     table_block = ft.Container(
@@ -332,6 +489,7 @@ def main(page: ft.Page, sidebar_open=False):
                     ),
                     border_radius=12,
                 ),
+                pagination_controls,
             ],
             spacing=10,
         ),
@@ -439,3 +597,6 @@ def main(page: ft.Page, sidebar_open=False):
             expand=True,
         )
     )
+
+    # Initial pagination load
+    loadTable(1, items_per_page["value"])

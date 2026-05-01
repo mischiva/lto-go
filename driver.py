@@ -207,10 +207,27 @@ def main(page: ft.Page, sidebar_open=False):
         form_box.visible = False
         page.update()
 
-    def loadTable(search="", license_type="", license_status="", sex=""):
-        rows = db.getDrivers(search, license_type, license_status, sex)
+    # Pagination state variables
+    current_page = {"value": 1}
+    items_per_page = {"value": 10}
+    total_items = {"value": 0}
+    all_rows_data = []  # Store all data for pagination
+
+    def loadTable(search="", license_type="", license_status="", sex="", page=1, per_page=10):
+        # Get all matching rows from database
+        all_matching_rows = db.getDrivers(search, license_type, license_status, sex)
+        total_items["value"] = len(all_matching_rows)
+        all_rows_data.clear()
+        all_rows_data.extend(all_matching_rows)
+
+        # Calculate pagination
+        start_idx = (page - 1) * per_page
+        end_idx = start_idx + per_page
+        page_rows = all_matching_rows[start_idx:end_idx]
+
+        # Clear and populate table with current page data
         table.rows.clear()
-        for r in rows:
+        for r in page_rows:
             license_no   = r["license_no"]
             full_name    = r["full_name"]
             dob          = str(r["dob"])
@@ -248,7 +265,94 @@ def main(page: ft.Page, sidebar_open=False):
                     ),
                 ])
             )
+
+        # Update pagination controls
+        update_pagination_controls()
         table.update()
+
+    def update_pagination_controls():
+        """Update pagination UI elements based on current state"""
+        total_pages = max(1, (total_items["value"] + items_per_page["value"] - 1) // items_per_page["value"])
+
+        # Update page info text
+        page_info_text.value = f"Page {current_page['value']} of {total_pages} ({total_items['value']} total items)"
+        page_info_text.update()
+
+        # Update navigation buttons
+        prev_button.disabled = current_page["value"] <= 1
+        next_button.disabled = current_page["value"] >= total_pages
+        prev_button.update()
+        next_button.update()
+
+        # Update page number buttons
+        page_buttons_container.controls.clear()
+        start_page = max(1, current_page["value"] - 2)
+        end_page = min(total_pages, start_page + 4)
+
+        if start_page > 1:
+            page_buttons_container.controls.append(
+                ft.TextButton("1", on_click=lambda e: go_to_page(1), style=ft.ButtonStyle(color=COLOR_PRIMARY))
+            )
+            if start_page > 2:
+                page_buttons_container.controls.append(ft.Text("..."))
+
+        for page_num in range(start_page, end_page + 1):
+            is_current = page_num == current_page["value"]
+            page_buttons_container.controls.append(
+                ft.TextButton(
+                    str(page_num),
+                    on_click=lambda e, p=page_num: go_to_page(p),
+                    style=ft.ButtonStyle(
+                        color=COLOR_PRIMARY if not is_current else "white",
+                        bgcolor=COLOR_PRIMARY if is_current else ft.Colors.TRANSPARENT
+                    )
+                )
+            )
+
+        if end_page < total_pages:
+            if end_page < total_pages - 1:
+                page_buttons_container.controls.append(ft.Text("..."))
+            page_buttons_container.controls.append(
+                ft.TextButton(str(total_pages), on_click=lambda e: go_to_page(total_pages), style=ft.ButtonStyle(color=COLOR_PRIMARY))
+            )
+
+        page_buttons_container.update()
+
+    def go_to_page(page_num):
+        """Navigate to a specific page"""
+        current_page["value"] = page_num
+        loadTable(
+            searchInput.value or "",
+            typeMap.get(typeInput.value, ""),
+            licenseStatusMap.get(statusInput.value, ""),
+            sexMap.get(sexInput.value, ""),
+            page_num,
+            items_per_page["value"]
+        )
+
+    def change_items_per_page(e):
+        """Handle items per page change"""
+        items_per_page["value"] = int(e.control.value)
+        current_page["value"] = 1  # Reset to first page
+        loadTable(
+            searchInput.value or "",
+            typeMap.get(typeInput.value, ""),
+            licenseStatusMap.get(statusInput.value, ""),
+            sexMap.get(sexInput.value, ""),
+            1,
+            items_per_page["value"]
+        )
+
+    def go_to_previous_page(e):
+        """Navigate to previous page"""
+        if current_page["value"] > 1:
+            go_to_page(current_page["value"] - 1)
+
+    def go_to_next_page(e):
+        """Navigate to next page"""
+        total_pages = max(1, (total_items["value"] + items_per_page["value"] - 1) // items_per_page["value"])
+        if current_page["value"] < total_pages:
+            go_to_page(current_page["value"] + 1)
 
     def getFormData():
         # date_input returns a Row — the actual TextField is inside controls[0].content
@@ -296,7 +400,9 @@ def main(page: ft.Page, sidebar_open=False):
         sex = sexMap.get(sexInput.value, "")
         licenseStatus =licenseStatusMap.get(statusInput.value, "")
 
-        loadTable(search, licenseType, licenseStatus, sex) # loads table again, but this time with updated filter parameters
+        # Reset to first page when filtering
+        current_page["value"] = 1
+        loadTable(search, licenseType, licenseStatus, sex, 1, items_per_page["value"]) # loads table again, but this time with updated filter parameters
 
     def saveDetails(e):
         data = getFormData()
@@ -306,7 +412,15 @@ def main(page: ft.Page, sidebar_open=False):
             else:
                 db.addDriver(data)
             hide_edit_form()
-            loadTable()
+            # Reload current page after save
+            loadTable(
+                searchInput.value or "",
+                typeMap.get(typeInput.value, ""),
+                licenseStatusMap.get(statusInput.value, ""),
+                sexMap.get(sexInput.value, ""),
+                current_page["value"],
+                items_per_page["value"]
+            )
         except Exception as ex:
             print("DB error:", ex)
 
@@ -332,7 +446,18 @@ def main(page: ft.Page, sidebar_open=False):
 
     def deleteDriver(license_no):
         db.deleteDriver(license_no)
-        loadTable()
+        # Reload table, adjusting page if necessary
+        total_pages = max(1, (total_items["value"] - 1 + items_per_page["value"] - 1) // items_per_page["value"])
+        if current_page["value"] > total_pages:
+            current_page["value"] = max(1, total_pages)
+        loadTable(
+            searchInput.value or "",
+            typeMap.get(typeInput.value, ""),
+            licenseStatusMap.get(statusInput.value, ""),
+            sexMap.get(sexInput.value, ""),
+            current_page["value"],
+            items_per_page["value"]
+        )
 
     searchInput=ft.TextField(
         hint_text="Search by license no. or name",
@@ -378,6 +503,27 @@ def main(page: ft.Page, sidebar_open=False):
         "M",
         "F",
     ])
+
+    typeMap = {
+        "All license types": "",
+        "NP - Non-Professional": "Non-Professional",
+        "P - Professional": "Professional",
+        "SP - Student Permit": "Student",
+    }
+
+    sexMap = {
+        "All sex": "",
+        "M": "M",
+        "F": "F",
+    }
+
+    licenseStatusMap = {
+        "All statuses": "",
+        "Valid": "Valid",
+        "Expired": "Expired",
+        "Suspended": "Suspended",
+        "Revoked": "Revoked",
+    }
 
     filters_row = ft.ResponsiveRow(
         columns=12,
@@ -445,6 +591,68 @@ def main(page: ft.Page, sidebar_open=False):
         ],
     )
 
+    # Pagination controls
+    items_per_page_dropdown = ft.Dropdown(
+        value="10",
+        options=[
+            ft.DropdownOption("5"),
+            ft.DropdownOption("10"),
+            ft.DropdownOption("25"),
+            ft.DropdownOption("50"),
+        ],
+        width=80,
+        height=40,
+        text_size=12,
+        on_select=change_items_per_page,
+        content_padding=ft.padding.symmetric(horizontal=8, vertical=0),
+    )
+
+    prev_button = ft.IconButton(
+        icon=ft.Icons.CHEVRON_LEFT,
+        icon_color=COLOR_PRIMARY,
+        on_click=go_to_previous_page,
+        disabled=True,
+        tooltip="Previous page"
+    )
+
+    next_button = ft.IconButton(
+        icon=ft.Icons.CHEVRON_RIGHT,
+        icon_color=COLOR_PRIMARY,
+        on_click=go_to_next_page,
+        disabled=True,
+        tooltip="Next page"
+    )
+
+    page_buttons_container = ft.Row(spacing=4, tight=True)
+
+    page_info_text = ft.Text(
+        "Page 1 of 1 (0 total items)",
+        size=12,
+        color=COLOR_TEXT_HINT,
+        font_family="Lato"
+    )
+
+    pagination_controls = ft.Container(
+        content=ft.Row(
+            controls=[
+                ft.Text("Show:", size=12, color=COLOR_TEXT_HINT, font_family="Lato"),
+                items_per_page_dropdown,
+                ft.Container(width=20),  # Spacer
+                prev_button,
+                page_buttons_container,
+                next_button,
+                ft.Container(width=20),  # Spacer
+                page_info_text,
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        padding=ft.padding.symmetric(horizontal=16, vertical=12),
+        border=ft.border.all(1, COLOR_BORDER),
+        border_radius=8,
+        bgcolor="#f8f9fa",
+    )
+
     table = ft.DataTable(
         border=ft.border.all(1, COLOR_BORDER),
         border_radius=12,
@@ -457,14 +665,14 @@ def main(page: ft.Page, sidebar_open=False):
         data_text_style=TABLE_DATA_STYLE,
         columns=[
             ft.DataColumn(label=ft.Text("License no.", style=TABLE_HEADER_STYLE)),
-            ft.DataColumn(label=ft.Text("Full name", style=TABLE_HEADER_STYLE)),
-            ft.DataColumn(label=ft.Text("Date of birth", style=TABLE_HEADER_STYLE)),
+            ft.DataColumn(label=ft.Text("Name", style=TABLE_HEADER_STYLE)),
+            ft.DataColumn(label=ft.Text("DOB", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Age", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Sex", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Type", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Status", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Expires", style=TABLE_HEADER_STYLE)),
-            ft.DataColumn(label=ft.Text("", style=TABLE_HEADER_STYLE)),
+            ft.DataColumn(label=ft.Text("Actions", style=TABLE_HEADER_STYLE)),
         ],
         rows=[],
     )
@@ -495,6 +703,7 @@ def main(page: ft.Page, sidebar_open=False):
                     ),
                     border_radius=12,
                 ),
+                pagination_controls,  # Add pagination controls below the table
             ],
             spacing=10,
         ),
@@ -641,4 +850,4 @@ def main(page: ft.Page, sidebar_open=False):
         )
     )
 
-    loadTable()
+    loadTable(page=1, per_page=10)  # Initial load with pagination

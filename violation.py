@@ -291,6 +291,26 @@ def main(page: ft.Page, sidebar_open=False):
         ],
     )
 
+    sample_violation_data = [
+        {"driver": "Juan Dela Cruz", "plate_no": "ABC 1234", "type": "Overspeeding", "date": "2025-06-10", "location": "Calamba, Laguna", "fine": "2,000", "status": "Unpaid"},
+        {"driver": "Maria Santos", "plate_no": "XYZ 5678", "type": "Reckless driving", "date": "2025-05-12", "location": "San Pablo, Laguna", "fine": "1,500", "status": "Paid"},
+        {"driver": "Pedro Reyes", "plate_no": "DEF 9012", "type": "No seatbelt", "date": "2025-04-22", "location": "Sta. Rosa, Laguna", "fine": "500", "status": "Contested"},
+        {"driver": "Ana Garcia", "plate_no": "GHI 3456", "type": "Overspeeding", "date": "2025-03-10", "location": "Binan, Laguna", "fine": "2,000", "status": "Paid"},
+        {"driver": "Carlos Mendoza", "plate_no": "JKL 7890", "type": "Reckless driving", "date": "2025-02-14", "location": "Cabuyao, Laguna", "fine": "1,500", "status": "Unpaid"},
+        {"driver": "Rosa Lim", "plate_no": "MNO 1357", "type": "No seatbelt", "date": "2025-01-18", "location": "Los Banos, Laguna", "fine": "500", "status": "Paid"},
+        {"driver": "Miguel Torres", "plate_no": "PQR 2468", "type": "Overspeeding", "date": "2024-12-02", "location": "Calamba, Laguna", "fine": "2,000", "status": "Contested"},
+        {"driver": "Elena Cruz", "plate_no": "STU 3690", "type": "Reckless driving", "date": "2024-11-07", "location": "San Pedro, Laguna", "fine": "1,500", "status": "Paid"},
+        {"driver": "Roberto Diaz", "plate_no": "VWX 4812", "type": "No seatbelt", "date": "2024-10-25", "location": "Ibaan, Batangas", "fine": "500", "status": "Unpaid"},
+        {"driver": "Lourdes Ramos", "plate_no": "YZA 5924", "type": "Overspeeding", "date": "2024-09-11", "location": "San Pablo, Laguna", "fine": "2,000", "status": "Paid"},
+        {"driver": "Fernando Reyes", "plate_no": "BCD 6035", "type": "Reckless driving", "date": "2024-08-03", "location": "Sta. Rosa, Laguna", "fine": "1,500", "status": "Contested"},
+        {"driver": "Carmen Flores", "plate_no": "EFG 7146", "type": "No seatbelt", "date": "2024-07-19", "location": "Biñan, Laguna", "fine": "500", "status": "Paid"},
+    ]
+
+    current_page = {"value": 1}
+    items_per_page = {"value": 10}
+    total_items = {"value": len(sample_violation_data)}
+    all_rows_data = sample_violation_data.copy()  # Store all data for pagination
+
     table = ft.DataTable(
         border=ft.border.all(1, color_border),
         border_radius=12,
@@ -311,33 +331,170 @@ def main(page: ft.Page, sidebar_open=False):
             ft.DataColumn(label=ft.Text("Status", style=table_header_style)),
             ft.DataColumn(label=ft.Text("Actions", style=table_header_style)),
         ],
-        rows=[
-            ft.DataRow(
-                cells=[
-                    ft.DataCell(ft.Text("Juan Dela Cruz", style=table_data_style)),
-                    ft.DataCell(ft.Text("ABC 1234", style=table_data_style)),
-                    ft.DataCell(ft.Text("Overspeeding", style=table_data_style)),
-                    ft.DataCell(ft.Text("2025-06-10", style=table_data_style)),
-                    ft.DataCell(ft.Text("Calamba, Laguna", style=table_data_style)),
-                    ft.DataCell(ft.Text("2,000", style=table_data_style)),
-                    ft.DataCell(ft.Text("Unpaid", style=table_data_style)),
-                    ft.DataCell(
-                        ft.Button(
-                            content=ft.Text("Edit", color="white", size=12, weight=ft.FontWeight.W_700),
-                            on_click=show_edit_form,
-                            style=ft.ButtonStyle(
-                                bgcolor={
-                                    ft.ControlState.DEFAULT: color_primary,
-                                    ft.ControlState.HOVERED: color_primary_hover,
-                                },
-                                shape=ft.RoundedRectangleBorder(radius=10),
-                            ),
-                            height=32,
-                        )
+        rows=[],
+    )
+
+    def loadTable(page=1, per_page=10):
+        """Load and display violation data using pagination"""
+        total_items["value"] = len(all_rows_data)
+
+        start_idx = (page - 1) * per_page
+        end_idx = min(start_idx + per_page, len(all_rows_data))
+        page_rows = all_rows_data[start_idx:end_idx]
+
+        table.rows.clear()
+        for row in page_rows:
+            table.rows.append(
+                ft.DataRow(
+                    cells=[
+                        ft.DataCell(ft.Text(row["driver"], style=table_data_style)),
+                        ft.DataCell(ft.Text(row["plate_no"], style=table_data_style)),
+                        ft.DataCell(ft.Text(row["type"], style=table_data_style)),
+                        ft.DataCell(ft.Text(row["date"], style=table_data_style)),
+                        ft.DataCell(ft.Text(row["location"], style=table_data_style)),
+                        ft.DataCell(ft.Text(row["fine"], style=table_data_style)),
+                        ft.DataCell(ft.Text(row["status"], style=table_data_style)),
+                        ft.DataCell(
+                            ft.Button(
+                                content=ft.Text("Edit", color="white", size=12, weight=ft.FontWeight.W_700),
+                                on_click=show_edit_form,
+                                style=ft.ButtonStyle(
+                                    bgcolor={
+                                        ft.ControlState.DEFAULT: color_primary,
+                                        ft.ControlState.HOVERED: color_primary_hover,
+                                    },
+                                    shape=ft.RoundedRectangleBorder(radius=10),
+                                ),
+                                height=32,
+                            )
+                        ),
+                    ]
+                )
+            )
+
+        update_pagination_controls()
+        table.update()
+
+    def update_pagination_controls():
+        total_pages = max(1, (total_items["value"] + items_per_page["value"] - 1) // items_per_page["value"])
+        page_info_text.value = f"Page {current_page['value']} of {total_pages} ({total_items['value']} total items)"
+        page_info_text.update()
+
+        prev_button.disabled = current_page["value"] <= 1
+        next_button.disabled = current_page["value"] >= total_pages
+        prev_button.update()
+        next_button.update()
+
+        page_buttons_container.controls.clear()
+        start_page = max(1, current_page["value"] - 2)
+        end_page = min(total_pages, start_page + 4)
+
+        if start_page > 1:
+            page_buttons_container.controls.append(
+                ft.TextButton("1", on_click=lambda e: go_to_page(1), style=ft.ButtonStyle(color=color_primary))
+            )
+            if start_page > 2:
+                page_buttons_container.controls.append(ft.Text("..."))
+
+        for page_num in range(start_page, end_page + 1):
+            is_current = page_num == current_page["value"]
+            page_buttons_container.controls.append(
+                ft.TextButton(
+                    str(page_num),
+                    on_click=lambda e, p=page_num: go_to_page(p),
+                    style=ft.ButtonStyle(
+                        color=color_primary if not is_current else "white",
+                        bgcolor=color_primary if is_current else ft.Colors.TRANSPARENT,
                     ),
-                ]
-            ),
+                )
+            )
+
+        if end_page < total_pages:
+            if end_page < total_pages - 1:
+                page_buttons_container.controls.append(ft.Text("..."))
+            page_buttons_container.controls.append(
+                ft.TextButton(str(total_pages), on_click=lambda e: go_to_page(total_pages), style=ft.ButtonStyle(color=color_primary))
+            )
+
+        page_buttons_container.update()
+
+    def go_to_page(page_num):
+        current_page["value"] = page_num
+        loadTable(page_num, items_per_page["value"])
+
+    def change_items_per_page(e):
+        items_per_page["value"] = int(e.control.value)
+        current_page["value"] = 1
+        loadTable(1, items_per_page["value"])
+
+    def go_to_previous_page(e):
+        if current_page["value"] > 1:
+            go_to_page(current_page["value"] - 1)
+
+    def go_to_next_page(e):
+        total_pages = max(1, (total_items["value"] + items_per_page["value"] - 1) // items_per_page["value"])
+        if current_page["value"] < total_pages:
+            go_to_page(current_page["value"] + 1)
+
+    items_per_page_dropdown = ft.Dropdown(
+        value="10",
+        options=[
+            ft.DropdownOption("5"),
+            ft.DropdownOption("10"),
+            ft.DropdownOption("25"),
+            ft.DropdownOption("50"),
         ],
+        width=80,
+        height=40,
+        text_size=12,
+        on_select=change_items_per_page,
+        content_padding=ft.padding.symmetric(horizontal=8, vertical=0),
+    )
+
+    prev_button = ft.IconButton(
+        icon=ft.Icons.CHEVRON_LEFT,
+        icon_color=color_primary,
+        on_click=go_to_previous_page,
+        disabled=True,
+        tooltip="Previous page",
+    )
+
+    next_button = ft.IconButton(
+        icon=ft.Icons.CHEVRON_RIGHT,
+        icon_color=color_primary,
+        on_click=go_to_next_page,
+        disabled=True,
+        tooltip="Next page",
+    )
+
+    page_buttons_container = ft.Row(spacing=4, tight=True)
+
+    page_info_text = ft.Text(
+        "Page 1 of 1 (0 total items)",
+        size=12,
+        color=color_text_hint,
+        font_family="Lato",
+    )
+
+    pagination_controls = ft.Container(
+        content=ft.Row(
+            controls=[
+                ft.Text("Show:", size=12, color=color_text_hint, font_family="Lato"),
+                items_per_page_dropdown,
+                ft.Container(width=20),
+                prev_button,
+                page_buttons_container,
+                next_button,
+                ft.Container(width=20),
+                page_info_text,
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        padding=ft.padding.symmetric(horizontal=16, vertical=12),
+        border=ft.border.all(1, color_border),
+        border_radius=8,
+        bgcolor="#f8f9fa",
     )
 
     table_block = ft.Container(
@@ -366,6 +523,7 @@ def main(page: ft.Page, sidebar_open=False):
                     ),
                     border_radius=12,
                 ),
+                pagination_controls,
             ],
             spacing=10,
         ),
@@ -477,3 +635,6 @@ def main(page: ft.Page, sidebar_open=False):
             expand=True,
         )
     )
+
+    # Initial pagination load
+    loadTable(1, items_per_page["value"])
