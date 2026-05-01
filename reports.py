@@ -1,30 +1,35 @@
+# standard flet import so we can build the ui
 import flet as ft
+# getting the sidebar helpers for navigation
 from sidebar import build_sidebar, toggle_sidebar
 
 
 def main(page: ft.Page, sidebar_open=False):
+    # basic page settings
     page.bgcolor = "white"
     page.padding = 0
 
     def go_to(screen_main, keep_sidebar_open=False):
+        # wiping the controls and switching screens while keeping the sidebar open state
         page.controls.clear()
         screen_main(page, sidebar_open=keep_sidebar_open)
         page.update()
 
     def go_to_sign_in():
+        # take the user back to login
         from sign_in import main as sign_in_main
         page.controls.clear()
         sign_in_main(page)
         page.update()
 
     def on_menu_item_click(item_name):
+        # logic for every item in the sidebar list
         if item_name == "__close__":
             toggle_sidebar(sidebar)
             return
         if item_name == "Sign out":
             go_to_sign_in()
             return
-
         if item_name == "Home":
             from home import main as home_main
             go_to(home_main, keep_sidebar_open=True)
@@ -43,8 +48,9 @@ def main(page: ft.Page, sidebar_open=False):
         elif item_name == "Generate reports":
             page.update()
 
+    # building the sidebar and marking reports as active
     sidebar = build_sidebar(page, on_menu_item_click, current_screen="Generate reports", is_open=sidebar_open)
-
+    # the hamburger icon to toggle the sidebar
     menu_button = ft.IconButton(
         icon=ft.icons.Icons.MENU,
         icon_size=28,
@@ -53,6 +59,7 @@ def main(page: ft.Page, sidebar_open=False):
     )
 
     main_content = ft.Container(
+        # centering the title on the reports page
         content=ft.Column(
             controls=[
                 ft.Row([menu_button], alignment=ft.MainAxisAlignment.START),
@@ -70,6 +77,7 @@ def main(page: ft.Page, sidebar_open=False):
         expand=True,
     )
 
+    # stacking the sidebar on top of our reports page
     page.add(
         ft.Stack(
             controls=[

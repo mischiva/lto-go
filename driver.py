@@ -1,3 +1,5 @@
+# we are pulling in flet for the ui and datetime for handling those tricky date strings
+# db is our middleman for the postgres connection so we can actually save and load drivers
 import flet as ft
 import datetime
 import db
@@ -21,29 +23,32 @@ from styles.driver_styles import (
 
 
 def main(page: ft.Page, sidebar_open=False):
+    # setting up the base page with white background and zero padding so our layout controls the space
     page.bgcolor = "white"
     page.padding = 0
     page.fonts = GOOGLE_FONTS
 
     def go_to(screen_main, keep_sidebar_open=False):
+        # we clear everything on the page before switching screens to keep things smooth
         page.controls.clear()
         screen_main(page, sidebar_open=keep_sidebar_open)
         page.update()
 
     def go_to_sign_in():
         from sign_in import main as sign_in_main
+        # standard logout procedure that wipes the current view and takes the user back to the login hero
         page.controls.clear()
         sign_in_main(page)
         page.update()
 
     def on_menu_item_click(item_name):
+        # handling sidebar clicks and making sure the sidebar state carries over between screens
         if item_name == "__close__":
             toggle_sidebar(sidebar)
             return
         if item_name == "Sign out":
             go_to_sign_in()
             return
-
         if item_name == "Home":
             from home import main as home_main
             go_to(home_main, keep_sidebar_open=True)
@@ -63,6 +68,7 @@ def main(page: ft.Page, sidebar_open=False):
             go_to(reports_main, keep_sidebar_open=True)
 
     def text_input(hint_text: str) -> ft.TextField:
+        # a helper function to create consistent text fields without repeating code
         return ft.TextField(
             hint_text=hint_text,
             height=46,
@@ -87,6 +93,7 @@ def main(page: ft.Page, sidebar_open=False):
         )
 
     def dropdown_input(options: list[str]) -> ft.Dropdown:
+        # setting up dropdowns with our custom theme colors and font choices
         return ft.Dropdown(
             options=[ft.DropdownOption(key=opt, text=opt) for opt in options],
             value=options[0] if len(options) > 0 else None,
@@ -108,15 +115,18 @@ def main(page: ft.Page, sidebar_open=False):
             dense=True,
         )
 
+    # tracking which field should receive the date when the calendar closes
     active_date_field = {"target": None}
 
     def on_date_change(e: ft.Event[ft.DatePicker]):
+        # updating the active text field once a date is selected from the picker
         target = active_date_field["target"]
         if target and e.control.value:
             target.value = e.control.value.strftime("%m/%d/%Y")
             target.update()
 
     date_picker = ft.DatePicker(
+        # initializing the system calendar with a broad range of years
         first_date=datetime.datetime(year=1900, month=1, day=1),
         last_date=datetime.datetime(year=2100, month=12, day=31),
         on_change=on_date_change,
@@ -124,10 +134,11 @@ def main(page: ft.Page, sidebar_open=False):
     page.overlay.append(date_picker)
 
     def date_input(hint_text: str) -> ft.Row:
+        # pairing a text input with a calendar icon to handle date entries
         date_field = text_input(hint_text)
         date_field.read_only = True
-
         def open_picker(e):
+            # linking the picker to this specific field before showing the dialog
             active_date_field["target"] = date_field
             page.show_dialog(date_picker)
 
@@ -146,6 +157,7 @@ def main(page: ft.Page, sidebar_open=False):
         )
 
     def labeled_field(label: str, control: ft.Control, col: int = 6) -> ft.Container:
+        # wrapping input controls with a descriptive label for better usability
         return ft.Container(
             col={"xs": 12, "md": col},
             content=ft.Column(
@@ -158,8 +170,9 @@ def main(page: ft.Page, sidebar_open=False):
             ),
         )
 
+    # mounting the sidebar and setting the current screen as driver
     sidebar = build_sidebar(page, on_menu_item_click, current_screen="Driver", is_open=sidebar_open)
-
+    # the main menu icon button that triggers the sidebar animation
     menu_button = ft.IconButton(
         icon=ft.icons.Icons.MENU,
         icon_size=28,
@@ -167,13 +180,13 @@ def main(page: ft.Page, sidebar_open=False):
         on_click=lambda e: (toggle_sidebar(sidebar), page.update()),
     )
 
+    # tracking the form title and button text for add and edit modes
     form_title = ft.Text("Add driver", style=SECTION_TITLE_STYLE)
     primary_action_label = ft.Text("Save", color="white", weight=ft.FontWeight.W_700)
-
     def addForm(e=None):
+        # resetting the edit flag so we know this is a fresh entry
         editingLicenseNo["value"] = None
-
-        # clear all fields
+        # clearing out every single form field so it starts empty
         fLastName.value      = ""
         fFirstName.value     = ""
         fMiddleName.value    = ""
@@ -192,40 +205,40 @@ def main(page: ft.Page, sidebar_open=False):
         page.update()
 
     def toggle_add_form(e=None):
+        # toggling the form visibility based on whether it is already shown
         if form_box.visible and form_title.value == "Add driver":
             hide_edit_form()
             return
         addForm()
 
+    # helper to flip the edit mode labels and show the form
     def editForm(): # just shows the edit form, nothing else
         form_title.value = "Edit driver"
         primary_action_label.value = "Update"
         form_box.visible = True
         page.update()
-
     def hide_edit_form(e=None):
         form_box.visible = False
         page.update()
 
-    # Pagination state variables
+    # initializing pagination and table state
     current_page = {"value": 1}
     items_per_page = {"value": 10}
     total_items = {"value": 0}
-    all_rows_data = []  # Store all data for pagination
-
+    all_rows_data = []
     def loadTable(search="", license_type="", license_status="", sex="", page=1, per_page=10):
-        # Get all matching rows from database
+        # pulling data from the database based on active filters
         all_matching_rows = db.getDrivers(search, license_type, license_status, sex)
         total_items["value"] = len(all_matching_rows)
         all_rows_data.clear()
         all_rows_data.extend(all_matching_rows)
 
-        # Calculate pagination
+        # picking which slice of data to display based on the page index
         start_idx = (page - 1) * per_page
         end_idx = start_idx + per_page
         page_rows = all_matching_rows[start_idx:end_idx]
 
-        # Clear and populate table with current page data
+        # clearing the table and adding the new rows one by one
         table.rows.clear()
         for r in page_rows:
             license_no   = r["license_no"]
@@ -237,6 +250,7 @@ def main(page: ft.Page, sidebar_open=False):
             lstatus      = r["license_status"]
             expires      = str(r["license_expire"])
             type_display = {"Non-Professional": "NP", "Professional": "P", "Student": "SP"}.get(ltype, ltype)
+            # building the data row with our specific table styles
             table.rows.append(
                 ft.DataRow(cells=[
                     ft.DataCell(ft.Text(license_no,   style=TABLE_DATA_STYLE)),
@@ -271,20 +285,18 @@ def main(page: ft.Page, sidebar_open=False):
         table.update()
 
     def update_pagination_controls():
-        """Update pagination UI elements based on current state"""
+        # math to figure out how many pages we need in total
         total_pages = max(1, (total_items["value"] + items_per_page["value"] - 1) // items_per_page["value"])
-
-        # Update page info text
+        # updating the label with the current page position
         page_info_text.value = f"Page {current_page['value']} of {total_pages} ({total_items['value']} total items)"
         page_info_text.update()
-
-        # Update navigation buttons
+        # disabling the arrows if we are at the very beginning or end
         prev_button.disabled = current_page["value"] <= 1
         next_button.disabled = current_page["value"] >= total_pages
         prev_button.update()
         next_button.update()
 
-        # Update page number buttons
+        # rebuilding the numeric page buttons dynamically
         page_buttons_container.controls.clear()
         start_page = max(1, current_page["value"] - 2)
         end_page = min(total_pages, start_page + 4)
@@ -303,6 +315,7 @@ def main(page: ft.Page, sidebar_open=False):
                     str(page_num),
                     on_click=lambda e, p=page_num: go_to_page(p),
                     style=ft.ButtonStyle(
+                        # highlighting the active page button
                         color=COLOR_PRIMARY if not is_current else "white",
                         bgcolor=COLOR_PRIMARY if is_current else ft.Colors.TRANSPARENT
                     )
@@ -319,7 +332,7 @@ def main(page: ft.Page, sidebar_open=False):
         page_buttons_container.update()
 
     def go_to_page(page_num):
-        """Navigate to a specific page"""
+        # running the table loader again whenever a page changes
         current_page["value"] = page_num
         loadTable(
             searchInput.value or "",
@@ -331,7 +344,7 @@ def main(page: ft.Page, sidebar_open=False):
         )
 
     def change_items_per_page(e):
-        """Handle items per page change"""
+        # changing the limit of rows and resetting back to the first page
         items_per_page["value"] = int(e.control.value)
         current_page["value"] = 1  # Reset to first page
         loadTable(
@@ -344,7 +357,7 @@ def main(page: ft.Page, sidebar_open=False):
         )
 
     def go_to_previous_page(e):
-        """Navigate to previous page"""
+        # subtracting from the page index
         if current_page["value"] > 1:
             go_to_page(current_page["value"] - 1)
 
@@ -355,14 +368,12 @@ def main(page: ft.Page, sidebar_open=False):
             go_to_page(current_page["value"] + 1)
 
     def getFormData():
-        # date_input returns a Row — the actual TextField is inside controls[0].content
+        # helper to grab the text value from our custom date control
         def getDate(dateRow):
             return dateRow.controls[0].content.value or ""
-
-        # sex dropdown shows "M - Male" but db only needs "M"
         def getSex(dropdown):
+            # stripping the label part and just keeping the code like M or F
             return dropdown.value.split(" - ")[0] if dropdown.value else ""
-
         return {
             "license_no":     fLicenseNo.value or "",
             "last_name":      fLastName.value or "",
@@ -378,7 +389,7 @@ def main(page: ft.Page, sidebar_open=False):
         }
 
     def filterDrivers(e=None): # function that runs on click of filter button
-        search = searchInput.value or "" # gets the value of the search input, or empty string if nothing is entered
+        search = searchInput.value or ""
 
         typeMap = { # since what's written is different from database format, this map is to ensure that it is the same
             "NP - Non-Professional": "Non-Professional",
@@ -402,9 +413,10 @@ def main(page: ft.Page, sidebar_open=False):
 
         # Reset to first page when filtering
         current_page["value"] = 1
-        loadTable(search, licenseType, licenseStatus, sex, 1, items_per_page["value"]) # loads table again, but this time with updated filter parameters
+        loadTable(search, licenseType, licenseStatus, sex, 1, items_per_page["value"])
 
     def saveDetails(e):
+        # deciding whether to run an insert or an update based on the license flag
         data = getFormData()
         try:
             if editingLicenseNo["value"]:
@@ -424,12 +436,14 @@ def main(page: ft.Page, sidebar_open=False):
         except Exception as ex:
             print("DB error:", ex)
 
-    def editDriver(license_no): # edit driver doesn't actually edit, instead shows the forms that the user can change when they want to edit the driver's details
-        row = db.getDriver(license_no) # uses getDriver command from db.py to get the driver's details
+    def editDriver(license_no):
+        # fetching a single driver record and filling the form with its details
+        row = db.getDriver(license_no)
         if not row:
             return
         editingLicenseNo["value"] = license_no
         fLastName.value = row["last_name"]
+        # assigning the db values back to our controller variables
         fFirstName.value = row["first_name"]
         fMiddleName.value = row["middle_name"] or ""
         fSuffix.value = row["suffix"] or ""
@@ -440,11 +454,11 @@ def main(page: ft.Page, sidebar_open=False):
         fDob.controls[0].content.value = str(row["dob"])
         fLicenseIssued.controls[0].content.value = str(row["license_issued"])
         fLicenseExpiry.controls[0].content.value = str(row["license_expire"])
-        
         editForm()
         page.update()
 
     def deleteDriver(license_no):
+        # deleting the record and recalculating the page index
         db.deleteDriver(license_no)
         # Reload table, adjusting page if necessary
         total_pages = max(1, (total_items["value"] - 1 + items_per_page["value"] - 1) // items_per_page["value"])
@@ -459,6 +473,7 @@ def main(page: ft.Page, sidebar_open=False):
             items_per_page["value"]
         )
 
+    # initializing the search input with its specific styling
     searchInput=ft.TextField(
         hint_text="Search by license no. or name",
         prefix_icon=ft.Icons.SEARCH,
@@ -483,6 +498,7 @@ def main(page: ft.Page, sidebar_open=False):
         content_padding=ft.padding.symmetric(horizontal=14, vertical=0),
     )
     
+    # dropdown for filtering by license category
     typeInput=dropdown_input([
         "All license types",
         "NP - Non-Professional",
@@ -490,6 +506,7 @@ def main(page: ft.Page, sidebar_open=False):
         "SP - Student Permit",
     ])
 
+    # dropdown for filtering by the current standing of the license
     statusInput=dropdown_input([
         "All statuses",
         "Valid",
@@ -497,13 +514,13 @@ def main(page: ft.Page, sidebar_open=False):
         "Suspended",
         "Revoked",
     ])
-    
     sexInput=dropdown_input([
         "All sex",
         "M",
         "F",
     ])
 
+    # mapping ui strings back to database codes for accurate filtering
     typeMap = {
         "All license types": "",
         "NP - Non-Professional": "Non-Professional",
@@ -525,6 +542,7 @@ def main(page: ft.Page, sidebar_open=False):
         "Revoked": "Revoked",
     }
 
+    # layout for the search and filter row using a responsive grid
     filters_row = ft.ResponsiveRow(
         columns=12,
         run_spacing=10,
@@ -607,6 +625,7 @@ def main(page: ft.Page, sidebar_open=False):
         content_padding=ft.padding.symmetric(horizontal=8, vertical=0),
     )
 
+    # pagination arrow buttons
     prev_button = ft.IconButton(
         icon=ft.Icons.CHEVRON_LEFT,
         icon_color=COLOR_PRIMARY,
@@ -623,15 +642,17 @@ def main(page: ft.Page, sidebar_open=False):
         tooltip="Next page"
     )
 
+    # container for the little 1, 2, 3 buttons
     page_buttons_container = ft.Row(spacing=4, tight=True)
 
+    # informative text at the bottom of the table
     page_info_text = ft.Text(
         "Page 1 of 1 (0 total items)",
         size=12,
         color=COLOR_TEXT_HINT,
         font_family="Lato"
     )
-
+    # assembly for the bottom pagination control bar
     pagination_controls = ft.Container(
         content=ft.Row(
             controls=[
@@ -653,6 +674,7 @@ def main(page: ft.Page, sidebar_open=False):
         bgcolor="#f8f9fa",
     )
 
+    # defining the structure of our data table and what columns we want to show
     table = ft.DataTable(
         border=ft.border.all(1, COLOR_BORDER),
         border_radius=12,
@@ -677,6 +699,7 @@ def main(page: ft.Page, sidebar_open=False):
         rows=[],
     )
 
+    # the card-like wrapper that holds the table and its title
     table_block = ft.Container(
         content=ft.Column(
             controls=[
@@ -725,9 +748,9 @@ def main(page: ft.Page, sidebar_open=False):
     fLicenseStatus = dropdown_input(["Valid", "Expired", "Suspended", "Revoked"])
     fLicenseIssued = date_input("mm/dd/yyyy")
     fLicenseExpiry = date_input("mm/dd/yyyy")
-
-    editingLicenseNo = {"value": None}  # tracks which driver is being edited
-
+    # tracking the specific record being updated
+    editingLicenseNo = {"value": None}
+    # the large form container used for creating or updating records
     form_box = ft.Container(
         content=ft.Column(
             controls=[
@@ -810,6 +833,7 @@ def main(page: ft.Page, sidebar_open=False):
                             on_click=hide_edit_form,
                         ),
                     ],
+                    # aligning buttons to the right side of the form
                     spacing=10,
                     alignment=ft.MainAxisAlignment.END,
                 ),
@@ -823,6 +847,7 @@ def main(page: ft.Page, sidebar_open=False):
         visible=False,
     )
 
+    # the main scrollable container for the whole screen
     main_content = ft.Container(
         content=ft.ListView(
             controls=[
@@ -840,6 +865,7 @@ def main(page: ft.Page, sidebar_open=False):
         expand=True,
     )
 
+    # stacking the sidebar on top of the main content so it can overlay when open
     page.add(
         ft.Stack(
             controls=[
@@ -849,5 +875,5 @@ def main(page: ft.Page, sidebar_open=False):
             expand=True,
         )
     )
-
-    loadTable(page=1, per_page=10)  # Initial load with pagination
+    # running the first table load automatically when the screen opens
+    loadTable(page=1, per_page=10)

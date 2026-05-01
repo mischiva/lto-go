@@ -1,6 +1,9 @@
+# SIDEBAR STYLES:
+# This contains all styles for the sidebar
+
 import flet as ft
 
-# Menu
+# MENU ITEMS
 MENU_ITEMS = [
     "Home",
     "Driver",
@@ -10,20 +13,20 @@ MENU_ITEMS = [
     "Generate reports",
 ]
 
-# Dimensions
+# DIMENSIONS
 SIDEBAR_WIDTH = 300
 LOGO_SIZE = 80
 MENU_ICON_SIZE = 28
 SIGN_OUT_WIDTH = 150
 SIGN_OUT_HEIGHT = 48
 
-# Spacing and layout
+# SPACING AND LAYOUT
 TOP_LOGO_GAP = 10
 HEADER_VERTICAL_PADDING = ft.padding.symmetric(vertical=20)
 MENU_ITEM_PADDING = ft.padding.symmetric(horizontal=20, vertical=12)
 SIGN_OUT_PADDING = ft.padding.symmetric(horizontal=20, vertical=20)
 
-# Colors
+# COLOR PALETTE
 SIDEBAR_BG = "#FFFFFF"
 TEXT_PRIMARY = "#000000"
 TEXT_SECONDARY = "#666666"
@@ -33,7 +36,7 @@ SIGN_OUT_BG = "#0038a8"
 SIGN_OUT_HOVER_BG = "#6d8dcc"
 SHADOW_COLOR = "#33000000"
 
-# Typography
+# MENU ITEM TEXT
 MENU_ITEM_TEXT_STYLE = ft.TextStyle(
     font_family="Roboto",
     size=16,
@@ -41,6 +44,7 @@ MENU_ITEM_TEXT_STYLE = ft.TextStyle(
     color=TEXT_PRIMARY,
 )
 
+# BRAND TITLE
 BRAND_TITLE_STYLE = ft.TextStyle(
     font_family="Roboto",
     size=24,
@@ -48,6 +52,7 @@ BRAND_TITLE_STYLE = ft.TextStyle(
     color=TEXT_PRIMARY,
 )
 
+# BRAND SUBTITLE
 BRAND_SUBTITLE_STYLE = ft.TextStyle(
     font_family="Roboto",
     size=12,
@@ -55,6 +60,7 @@ BRAND_SUBTITLE_STYLE = ft.TextStyle(
     color=TEXT_SECONDARY,
 )
 
+# SIGN OUT TEXT
 SIGN_OUT_TEXT_STYLE = ft.TextStyle(
     font_family="Lato",
     weight=ft.FontWeight.W_700,
@@ -62,6 +68,7 @@ SIGN_OUT_TEXT_STYLE = ft.TextStyle(
     color="white",
 )
 
+# SIGN OUT BUTTON STYLE
 SIGN_OUT_BUTTON_STYLE = ft.ButtonStyle(
     shape=ft.RoundedRectangleBorder(radius=18),
     bgcolor={
@@ -72,4 +79,5 @@ SIGN_OUT_BUTTON_STYLE = ft.ButtonStyle(
 
 
 def is_hovered(data) -> bool:
+    # simple helper lang to para macheck kung hovered ba yung element o hindi
     return data is True or str(data).lower() == "true"

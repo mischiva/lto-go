@@ -1,3 +1,5 @@
+# bringing in flet and our navigation tools so we can build out the vehicle management screen
+# we import all our custom styles from the vehicle_styles file to keep the code clean
 import flet as ft
 from sidebar import build_sidebar, toggle_sidebar
 from styles.fonts import GOOGLE_FONTS
@@ -19,23 +21,26 @@ from styles.vehicle_styles import (
 
 
 def main(page: ft.Page, sidebar_open=False):
+    # basic setup for the base screen with our custom fonts and white background
     page.bgcolor = "white"
     page.padding = 0
     page.fonts = GOOGLE_FONTS
 
-
     def go_to(screen_main, keep_sidebar_open=False):
+        # wiping the controls and switching modules while carrying over the sidebar state
         page.controls.clear()
         screen_main(page, sidebar_open=keep_sidebar_open)
         page.update()
 
     def go_to_sign_in():
+        # standard exit logic to take the user back to sign in
         from sign_in import main as sign_in_main
         page.controls.clear()
         sign_in_main(page)
         page.update()
 
     def on_menu_item_click(item_name):
+        # routing dispatcher for all items in our sidebar navigation
         if item_name == "__close__":
             toggle_sidebar(sidebar)
             return
@@ -63,6 +68,7 @@ def main(page: ft.Page, sidebar_open=False):
             go_to(reports_main, keep_sidebar_open=True)
 
     def text_input(hint_text: str) -> ft.TextField:
+        # a helper function to build themed text fields so we don't have to keep repeating the styling
         return ft.TextField(
             hint_text=hint_text,
             height=46,
@@ -87,6 +93,7 @@ def main(page: ft.Page, sidebar_open=False):
         )
 
     def dropdown_input(options: list[str]) -> ft.Dropdown:
+        # setting up styled dropdowns with a fixed scroll height for better usability
         return ft.Dropdown(
             options=[ft.DropdownOption(key=opt, text=opt) for opt in options],
             value=options[0] if len(options) > 0 else None,
@@ -109,6 +116,7 @@ def main(page: ft.Page, sidebar_open=False):
         )
 
     def labeled_field(label: str, control: ft.Control, col: int = 6) -> ft.Container:
+        # adding labels on top of our inputs and placing them in our responsive grid
         return ft.Container(
             col={"xs": 12, "md": col},
             content=ft.Column(
@@ -121,8 +129,9 @@ def main(page: ft.Page, sidebar_open=False):
             ),
         )
 
+    # initializing the sidebar and setting this screen as active
     sidebar = build_sidebar(page, on_menu_item_click, current_screen="Vehicle", is_open=sidebar_open)
-
+    # the hamburger icon to slide the sidebar in and out
     menu_button = ft.IconButton(
         icon=ft.icons.Icons.MENU,
         icon_size=28,
@@ -130,22 +139,25 @@ def main(page: ft.Page, sidebar_open=False):
         on_click=lambda e: (toggle_sidebar(sidebar), page.update()),
     )
 
+    # trackers for the form title and primary button text
     form_title = ft.Text("Add vehicle", style=SECTION_TITLE_STYLE)
     primary_action_label = ft.Text("Add", color="white", weight=ft.FontWeight.W_700)
-
     def show_add_form(e=None):
+        # making the form visible and setting it up for a new entry
         form_title.value = "Add vehicle"
         primary_action_label.value = "Add"
         form_box.visible = True
         page.update()
 
     def toggle_add_form(e=None):
+        # toggling form visibility based on whether it is already open for adding
         if form_box.visible and form_title.value == "Add vehicle":
             hide_edit_form()
             return
         show_add_form()
 
     def show_edit_form(e=None):
+        # using the same form box but switching labels for edit mode
         form_title.value = "Add vehicle"
         primary_action_label.value = "Add"
         form_box.visible = True
@@ -154,7 +166,7 @@ def main(page: ft.Page, sidebar_open=False):
     def hide_edit_form(e=None):
         form_box.visible = False
         page.update()
-
+    # the row containing our global search and filtering tools for the vehicle table
     filters_row = ft.ResponsiveRow(
         columns=12,
         run_spacing=10,
@@ -241,8 +253,8 @@ def main(page: ft.Page, sidebar_open=False):
         ],
     )
 
-    # Sample vehicle data (replace with database calls when available)
     sample_vehicle_data = [
+        # dummy records for building the table and pagination logic
         {"plate_no": "ABC 1234", "make_model": "Toyota Vios", "year": "2020", "type": "Private car", "owner": "Juan Dela Cruz"},
         {"plate_no": "XYZ 5678", "make_model": "Honda Civic", "year": "2019", "type": "Private car", "owner": "Maria Santos"},
         {"plate_no": "DEF 9012", "make_model": "Ford Ranger", "year": "2021", "type": "Pickup truck", "owner": "Pedro Reyes"},
@@ -260,19 +272,15 @@ def main(page: ft.Page, sidebar_open=False):
         {"plate_no": "NOP 0479", "make_model": "Ford Focus", "year": "2018", "type": "Sedan", "owner": "Ricardo Moreno"},
     ]
 
-    # Pagination state variables
+    # pagination trackers for the data list
     current_page = {"value": 1}
     items_per_page = {"value": 10}
     total_items = {"value": len(sample_vehicle_data)}
-    all_rows_data = sample_vehicle_data.copy()  # Store all data for pagination
-
+    all_rows_data = sample_vehicle_data.copy()
     def loadTable(page=1, per_page=10):
-        """
-        Load and display vehicle table data with pagination support.
-        Currently uses sample data - replace with database calls when available.
-        """
-        # Sample vehicle data (replace with database query later)
+        # picking which vehicle rows to show based on our page index
         sample_vehicles = [
+            # local list for our demo pagination
             {"plate_no": "ABC 1234", "make_model": "Toyota Vios", "year": "2020", "type": "Private car", "owner": "Juan Dela Cruz"},
             {"plate_no": "XYZ 5678", "make_model": "Honda Civic", "year": "2019", "type": "Private car", "owner": "Maria Santos"},
             {"plate_no": "DEF 9012", "make_model": "Ford Ranger", "year": "2021", "type": "Pickup truck", "owner": "Pedro Reyes"},
@@ -286,16 +294,12 @@ def main(page: ft.Page, sidebar_open=False):
             {"plate_no": "BCD 6249", "make_model": "Toyota Hilux", "year": "2022", "type": "Pickup truck", "owner": "Fernando Lopez"},
             {"plate_no": "EFG 7381", "make_model": "Nissan Patrol", "year": "2019", "type": "SUV", "owner": "Carmen Morales"},
         ]
-
-        # Update total items count
         total_items["value"] = len(sample_vehicles)
-
-        # Calculate pagination bounds
+        # math to get the start and end of our data slice
         start_idx = (page - 1) * per_page
         end_idx = min(start_idx + per_page, len(sample_vehicles))
         page_rows = sample_vehicles[start_idx:end_idx]
-
-        # Clear and populate table with current page data
+        # repopulating the table with our selected data
         table.rows.clear()
         for vehicle in page_rows:
             table.rows.append(
@@ -315,6 +319,7 @@ def main(page: ft.Page, sidebar_open=False):
                             ),
                             ft.Button(
                                 content=ft.Text("Delete", color="white", size=12, weight=ft.FontWeight.W_700),
+                                # delete logic currently a placeholder for the user to implement
                                 on_click=lambda e: None,
                                 style=DANGER_BUTTON_STYLE,
                                 height=32,
@@ -323,26 +328,20 @@ def main(page: ft.Page, sidebar_open=False):
                     ),
                 ])
             )
-
-        # Update pagination controls
         update_pagination_controls()
         table.update()
 
     def update_pagination_controls():
-        """Update pagination UI elements based on current state"""
+        # figuring out the total page count and updating our position label
         total_pages = max(1, (total_items["value"] + items_per_page["value"] - 1) // items_per_page["value"])
-
-        # Update page info text
         page_info_text.value = f"Page {current_page['value']} of {total_pages} ({total_items['value']} total items)"
         page_info_text.update()
-
-        # Update navigation buttons
+        # disabling arrows if we are at the start or end of the list
         prev_button.disabled = current_page["value"] <= 1
         next_button.disabled = current_page["value"] >= total_pages
         prev_button.update()
         next_button.update()
-
-        # Update page number buttons
+        # rebuilding the numeric buttons at the bottom
         page_buttons_container.controls.clear()
         start_page = max(1, current_page["value"] - 2)
         end_page = min(total_pages, start_page + 4)
@@ -361,6 +360,7 @@ def main(page: ft.Page, sidebar_open=False):
                     str(page_num),
                     on_click=lambda e, p=page_num: go_to_page(p),
                     style=ft.ButtonStyle(
+                        # highlighting the button for our active page
                         color=COLOR_PRIMARY if not is_current else "white",
                         bgcolor=COLOR_PRIMARY if is_current else ft.Colors.TRANSPARENT
                     )
@@ -377,27 +377,28 @@ def main(page: ft.Page, sidebar_open=False):
         page_buttons_container.update()
 
     def go_to_page(page_num):
-        """Navigate to a specific page"""
+        # when a specific page button is clicked we reload the table with that index
         current_page["value"] = page_num
         loadTable(page_num, items_per_page["value"])
 
     def change_items_per_page(e):
-        """Handle items per page change"""
+        # user changed the page size so we reset back to page 1 to avoid showing an empty index
         items_per_page["value"] = int(e.control.value)
         current_page["value"] = 1  # Reset to first page
         loadTable(1, items_per_page["value"])
 
     def go_to_previous_page(e):
-        """Navigate to previous page"""
+        # simple decrement of the page counter
         if current_page["value"] > 1:
             go_to_page(current_page["value"] - 1)
 
     def go_to_next_page(e):
-        """Navigate to next page"""
+        # simple increment of the page counter with a safety check against the max page
         total_pages = max(1, (total_items["value"] + items_per_page["value"] - 1) // items_per_page["value"])
         if current_page["value"] < total_pages:
             go_to_page(current_page["value"] + 1)
 
+    # defining the table structure including its headers and borders
     table = ft.DataTable(
         border=ft.border.all(1, COLOR_BORDER),
         border_radius=12,
@@ -416,11 +417,11 @@ def main(page: ft.Page, sidebar_open=False):
             ft.DataColumn(label=ft.Text("Owner", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Actions", style=TABLE_HEADER_STYLE)),
         ],
-        rows=[],  # Will be populated by loadTable()
+        rows=[],
     )
 
-    # Pagination controls
     items_per_page_dropdown = ft.Dropdown(
+        # control for picking how many records are shown at a time
         value="10",
         options=[
             ft.DropdownOption("5"),
@@ -435,6 +436,7 @@ def main(page: ft.Page, sidebar_open=False):
         content_padding=ft.padding.symmetric(horizontal=8, vertical=0),
     )
 
+    # back button icon
     prev_button = ft.IconButton(
         icon=ft.Icons.CHEVRON_LEFT,
         icon_color=COLOR_PRIMARY,
@@ -443,6 +445,7 @@ def main(page: ft.Page, sidebar_open=False):
         tooltip="Previous page"
     )
 
+    # forward button icon
     next_button = ft.IconButton(
         icon=ft.Icons.CHEVRON_RIGHT,
         icon_color=COLOR_PRIMARY,
@@ -450,17 +453,16 @@ def main(page: ft.Page, sidebar_open=False):
         disabled=True,
         tooltip="Next page"
     )
-
+    # container for the dynamic page number buttons
     page_buttons_container = ft.Row(spacing=4, tight=True)
-
     page_info_text = ft.Text(
         "Page 1 of 1 (0 total items)",
         size=12,
         color=COLOR_TEXT_HINT,
         font_family="Lato"
     )
-
     pagination_controls = ft.Container(
+        # assembly for the pagination control bar at the bottom
         content=ft.Row(
             controls=[
                 ft.Text("Show:", size=12, color=COLOR_TEXT_HINT, font_family="Lato"),
@@ -480,8 +482,8 @@ def main(page: ft.Page, sidebar_open=False):
         border_radius=8,
         bgcolor="#f8f9fa",
     )
-
     table_block = ft.Container(
+        # wrapping the table and title in a styled block
         content=ft.Column(
             controls=[
                 ft.Row(
@@ -507,7 +509,7 @@ def main(page: ft.Page, sidebar_open=False):
                     ),
                     border_radius=12,
                 ),
-                pagination_controls,  # Add pagination controls below the table
+                pagination_controls,
             ],
             spacing=10,
         ),
@@ -516,8 +518,8 @@ def main(page: ft.Page, sidebar_open=False):
         border_radius=14,
         bgcolor="white",
     )
-
     form_box = ft.Container(
+        # the hidden container used for our data entry form
         content=ft.Column(
             controls=[
                 ft.Row(
@@ -545,6 +547,7 @@ def main(page: ft.Page, sidebar_open=False):
                 ),
                 ft.Text("Vehicle details", style=SECTION_TITLE_STYLE),
                 ft.ResponsiveRow(
+                    # grid layout for all our vehicle form fields
                     columns=12,
                     run_spacing=10,
                     controls=[
@@ -592,8 +595,8 @@ def main(page: ft.Page, sidebar_open=False):
         bgcolor="white",
         visible=False,
     )
-
     main_content = ft.Container(
+        # master layout for the vehicle screen
         content=ft.ListView(
             controls=[
                 ft.Row([menu_button], alignment=ft.MainAxisAlignment.START),
@@ -609,7 +612,7 @@ def main(page: ft.Page, sidebar_open=False):
         padding=ft.padding.symmetric(horizontal=40, vertical=30),
         expand=True,
     )
-
+    # stacking the sidebar over our main content
     page.add(
         ft.Stack(
             controls=[
@@ -620,5 +623,5 @@ def main(page: ft.Page, sidebar_open=False):
         )
     )
 
-    # Initial load of table data
+    # trigger the table load once the screen mounts
     loadTable(1, 10)

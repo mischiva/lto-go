@@ -1,31 +1,30 @@
+# HOMEPAGE STYLES:
+# This contains all styles for the home page
+
 import flet as ft
 
-# Page
 PAGE_BGCOLOR = "white"
 PAGE_PADDING = 0
 PAGE_CONTENT_PADDING = ft.padding.symmetric(horizontal=40, vertical=30)
 
-# Layout sizing and spacing
 ROW_SPACING = 16
 HEADER_GAP = 20
 ROWS_GAP = 8
 HEADER_TEXT_SPACING = 2
 
-# Dimensions
 CARD_HEIGHT = 180
 CARD_RADIUS = 14
 
-# Card layout
 CARD_TEXT_SPACING = 4
 CARD_TEXT_PADDING = ft.padding.all(16)
 
-# Palette
+# COLOR PALETTE
 COLOR_BLACK = "#000000"
 COLOR_PRIMARY = "#0038a8"
 COLOR_TRANSPARENT = "#00000000"
 COLOR_CARD_HOVER_OVERLAY = "#2D000000"
 
-# Typography
+# TITLE
 HEADER_TITLE_STYLE = ft.TextStyle(
     font_family="DM Sans",
     size=48,
@@ -33,6 +32,7 @@ HEADER_TITLE_STYLE = ft.TextStyle(
     color=COLOR_PRIMARY,
 )
 
+# GREETING TEXT
 HEADER_SUBTITLE_STYLE = ft.TextStyle(
     font_family="Roboto",
     size=16,
@@ -41,6 +41,7 @@ HEADER_SUBTITLE_STYLE = ft.TextStyle(
     color=COLOR_BLACK,
 )
 
+# CARD NAMES
 CARD_TITLE_STYLE = ft.TextStyle(
     font_family="Roboto",
     size=20,
@@ -48,13 +49,14 @@ CARD_TITLE_STYLE = ft.TextStyle(
     color=COLOR_BLACK,
 )
 
+# CARD DESCRIPTION
 CARD_DESCRIPTION_STYLE = ft.TextStyle(
     font_family="Lato",
     size=12,
     color=COLOR_BLACK,
 )
 
-# Card content
+# TEXT
 DRIVER_TITLE = "Driver"
 DRIVER_DESCRIPTION = "Add, update, delete, and search driver records and license information."
 DRIVER_IMAGE = "media/driver.png"
@@ -76,8 +78,10 @@ REPORTS_DESCRIPTION = "Get summaries and insights on drivers, vehicles, registra
 REPORTS_IMAGE = "media/report.png"
 
 
+# para tong ang approach ko ay like ito ay react component kunyare
+# tapos may function dito sa styles keme saka lang to cacall / import dun sa home mismo
+# dibaaa wow
 def build_card_content(title: str, description: str, image_path: str) -> ft.Container:
-    # Builds the visual PNG card with title and description text
     return ft.Container(
         content=ft.Stack(
             controls=[
@@ -116,7 +120,7 @@ def build_card_content(title: str, description: str, image_path: str) -> ft.Cont
 
 
 def build_card_overlay_button(on_click) -> ft.Container:
-    # Full-size invisible click layer with hover overlay tint
+    # overlay to para dun sa medjo grayish look 
     overlay_button = ft.Container(
         expand=True,
         height=CARD_HEIGHT,
@@ -127,6 +131,7 @@ def build_card_overlay_button(on_click) -> ft.Container:
     )
 
     def on_overlay_hover(e: ft.HoverEvent):
+        # when the user hovers over a card we add a slight dark tint so they know it is clickable
         is_hovered = e.data is True or str(e.data).lower() == "true"
         overlay_button.bgcolor = COLOR_CARD_HOVER_OVERLAY if is_hovered else COLOR_TRANSPARENT
         overlay_button.update()
