@@ -179,12 +179,21 @@ def main(page: ft.Page, sidebar_open=False):
 
     def show_add_form(e=None):
         # making the form visible for new entries
+        form_title.value = "Add registration"
+        primary_action_label.value = "Save"
+        form_box.visible = True
+        page.update()
+
+    def show_edit_form(e=None):
+        # switching to edit mode labels and showing the form
+        form_title.value = "Edit registration"
+        primary_action_label.value = "Save"
         form_box.visible = True
         page.update()
 
     def toggle_add_form(e=None):
         # switching form visibility based on its current state
-        if form_box.visible:
+        if form_box.visible and form_title.value == "Add registration":
             hide_form()
             return
         show_add_form()
@@ -234,9 +243,35 @@ def main(page: ft.Page, sidebar_open=False):
                     "Suspended",
                 ]),
             ),
-            ft.Container(col={"xs": 0, "md": 4}),
+            ft.Container(col={"xs": 0, "md": 3}),
             ft.Container(
-                col={"xs": 12, "md": 2},
+                col={"xs": 6, "md": 1},
+                content=ft.Button(
+                    # FILTER BUTTON
+                    content=ft.Row(
+                        controls=[
+                            ft.Icon(ft.Icons.FILTER_ALT, color="white", size=16),
+                            ft.Text(
+                                "Filter",
+                                style=ft.TextStyle(
+                                    font_family="Lato",
+                                    size=13,
+                                    weight=ft.FontWeight.W_700,
+                                    color="white",
+                                ),
+                            ),
+                        ],
+                        spacing=6,
+                        tight=True,
+                    ),
+                    style=s.BLUE_BUTTON_STYLE,
+                    height=46,
+                    width=float("inf"),
+                    on_click=lambda e: None,
+                ),
+            ),
+            ft.Container(
+                col={"xs": 6, "md": 2},
                 content=ft.Button(
                     content=ft.Text(
                         "+ New registration",
@@ -295,6 +330,7 @@ def main(page: ft.Page, sidebar_open=False):
             ft.DataColumn(label=ft.Text("Reg. date", style=s.TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Expiry date", style=s.TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Status", style=s.TABLE_HEADER_STYLE)),
+            ft.DataColumn(label=ft.Text("Actions", style=s.TABLE_HEADER_STYLE)),
         ],
         rows=[],
     )
@@ -316,6 +352,27 @@ def main(page: ft.Page, sidebar_open=False):
                         ft.DataCell(ft.Text(row["reg_date"], style=s.TABLE_DATA_STYLE)),
                         ft.DataCell(ft.Text(row["expiry_date"], style=s.TABLE_DATA_STYLE)),
                         ft.DataCell(ft.Text(row["status"], style=s.TABLE_DATA_STYLE)),
+                        ft.DataCell(
+                            ft.Row(controls=[
+                                ft.Button(
+                                    # EDIT
+                                    content=ft.Text("Edit", color="white", size=12, weight=ft.FontWeight.W_700),
+                                    on_click=show_edit_form,
+                                    style=s.BLUE_BUTTON_STYLE,
+                                    height=32,
+                                ),
+                                ft.Button(
+                                    # DELETE
+                                    content=ft.Text("Delete", color="white", size=12, weight=ft.FontWeight.W_700),
+                                    on_click=lambda e: None,
+                                    style=ft.ButtonStyle(
+                                        bgcolor={ft.ControlState.DEFAULT: "#B42318", ft.ControlState.HOVERED: "#dc5b4a"},
+                                        shape=ft.RoundedRectangleBorder(radius=12),
+                                    ),
+                                    height=32,
+                                ),
+                            ], spacing=6, tight=True)
+                        ),
                     ]
                 )
             )
@@ -559,12 +616,6 @@ def main(page: ft.Page, sidebar_open=False):
                 ft.Row([menu_button], alignment=ft.MainAxisAlignment.START),
                 ft.Container(height=6),
                 ft.Text("Registration", style=s.TITLE_STYLE),
-                ft.Text(
-                    "Record vehicle registrations and renewals.",
-                    size=14,
-                    color="#4b5563",
-                    font_family="Lato",
-                ),
                 filters_row,
                 table_block,
                 form_box,

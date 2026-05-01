@@ -777,12 +777,6 @@ def main(page: ft.Page, sidebar_open=False):
                     alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
                     vertical_alignment=ft.CrossAxisAlignment.CENTER,
                 ),
-                ft.Text(
-                    "Complete all required details, then save.",
-                    size=12,
-                    color="#6b7280",
-                    font_family="Lato",
-                ),
                 ft.Text("Driver details", style=SECTION_TITLE_STYLE),
                 ft.ResponsiveRow(
                     columns=12,

@@ -174,6 +174,7 @@ def main(page: ft.Page, sidebar_open=False):
     def show_add_form(e=None):
         # opening the form for a new entry
         form_title.value = "Add violation"
+        primary_action_label.value = "Save"
         form_box.visible = True
         page.update()
 
@@ -186,6 +187,7 @@ def main(page: ft.Page, sidebar_open=False):
     def show_edit_form(e=None):
         # updating labels and showing the form for editing
         form_title.value = "Edit violation"
+        primary_action_label.value = "Save"
         form_box.visible = True
         page.update()
 
@@ -243,9 +245,35 @@ def main(page: ft.Page, sidebar_open=False):
                     "Contested",
                 ]),
             ),
-            ft.Container(col={"xs": 0, "md": 2}),
+            ft.Container(col={"xs": 0, "md": 1}),
             ft.Container(
-                col={"xs": 12, "md": 2},
+                col={"xs": 6, "md": 1},
+                content=ft.Button(
+                    # FILTER BUTTON
+                    content=ft.Row(
+                        controls=[
+                            ft.Icon(ft.Icons.FILTER_ALT, color="white", size=16),
+                            ft.Text(
+                                "Filter",
+                                style=ft.TextStyle(
+                                    font_family="Lato",
+                                    size=13,
+                                    weight=ft.FontWeight.W_700,
+                                    color="white",
+                                ),
+                            ),
+                        ],
+                        spacing=6,
+                        tight=True,
+                    ),
+                    style=s.BLUE_BUTTON_STYLE,
+                    height=46,
+                    width=float("inf"),
+                    on_click=lambda e: None,
+                ),
+            ),
+            ft.Container(
+                col={"xs": 6, "md": 2},
                 content=ft.Button(
                     content=ft.Text(
                         "+ Add violation",
@@ -331,18 +359,25 @@ def main(page: ft.Page, sidebar_open=False):
                         ft.DataCell(ft.Text(row["fine"], style=s.TABLE_DATA_STYLE)),
                         ft.DataCell(ft.Text(row["status"], style=s.TABLE_DATA_STYLE)),
                         ft.DataCell(
-                            ft.Button(
-                                content=ft.Text("Edit", color="white", size=12, weight=ft.FontWeight.W_700),
-                                on_click=show_edit_form,
-                                style=ft.ButtonStyle(
-                                    bgcolor={
-                                        ft.ControlState.DEFAULT: s.COLOR_PRIMARY,
-                                        ft.ControlState.HOVERED: s.COLOR_PRIMARY_HOVER,
-                                    },
-                                    shape=ft.RoundedRectangleBorder(radius=10),
+                            ft.Row(controls=[
+                                ft.Button(
+                                    # EDIT BUTTON
+                                    content=ft.Text("Edit", color="white", size=12, weight=ft.FontWeight.W_700),
+                                    on_click=show_edit_form,
+                                    style=s.BLUE_BUTTON_STYLE,
+                                    height=32,
                                 ),
-                                height=32,
-                            )
+                                ft.Button(
+                                    #\\ DELETE BUTTON
+                                    content=ft.Text("Delete", color="white", size=12, weight=ft.FontWeight.W_700),
+                                    on_click=lambda e: None,
+                                    style=ft.ButtonStyle(
+                                        bgcolor={ft.ControlState.DEFAULT: "#B42318", ft.ControlState.HOVERED: "#dc5b4a"},
+                                        shape=ft.RoundedRectangleBorder(radius=12),
+                                    ),
+                                    height=32,
+                                ),
+                            ], spacing=6, tight=True)
                         ),
                     ]
                 )
@@ -591,12 +626,6 @@ def main(page: ft.Page, sidebar_open=False):
                 ft.Row([menu_button], alignment=ft.MainAxisAlignment.START),
                 ft.Container(height=6),
                 ft.Text("Violation", style=s.TITLE_STYLE),
-                ft.Text(
-                    "Record traffic violations committed by drivers.",
-                    size=14,
-                    color="#4b5563",
-                    font_family="Lato",
-                ),
                 filters_row,
                 table_block,
                 form_box,

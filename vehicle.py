@@ -145,7 +145,7 @@ def main(page: ft.Page, sidebar_open=False):
     def show_add_form(e=None):
         # making the form visible and setting it up for a new entry
         form_title.value = "Add vehicle"
-        primary_action_label.value = "Add"
+        primary_action_label.value = "Save"
         form_box.visible = True
         page.update()
 
@@ -158,8 +158,8 @@ def main(page: ft.Page, sidebar_open=False):
 
     def show_edit_form(e=None):
         # using the same form box but switching labels for edit mode
-        form_title.value = "Add vehicle"
-        primary_action_label.value = "Add"
+        form_title.value = "Edit vehicle"
+        primary_action_label.value = "Save"
         form_box.visible = True
         page.update()
 
