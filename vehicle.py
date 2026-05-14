@@ -1,3 +1,5 @@
+# bringing in flet and our navigation tools so we can build out the vehicle management screen
+# we import all our custom styles from the vehicle_styles file to keep the code clean
 import flet as ft
 from sidebar import build_sidebar, toggle_sidebar
 from styles.fonts import GOOGLE_FONTS
@@ -19,23 +21,26 @@ from styles.vehicle_styles import (
 
 
 def main(page: ft.Page, sidebar_open=False):
+    # basic setup for the base screen with our custom fonts and white background
     page.bgcolor = "white"
     page.padding = 0
     page.fonts = GOOGLE_FONTS
 
-
     def go_to(screen_main, keep_sidebar_open=False):
+        # wiping the controls and switching modules while carrying over the sidebar state
         page.controls.clear()
         screen_main(page, sidebar_open=keep_sidebar_open)
         page.update()
 
     def go_to_sign_in():
+        # standard exit logic to take the user back to sign in
         from sign_in import main as sign_in_main
         page.controls.clear()
         sign_in_main(page)
         page.update()
 
     def on_menu_item_click(item_name):
+        # routing dispatcher for all items in our sidebar navigation
         if item_name == "__close__":
             toggle_sidebar(sidebar)
             return
@@ -63,6 +68,7 @@ def main(page: ft.Page, sidebar_open=False):
             go_to(reports_main, keep_sidebar_open=True)
 
     def text_input(hint_text: str) -> ft.TextField:
+        # a helper function to build themed text fields so we don't have to keep repeating the styling
         return ft.TextField(
             hint_text=hint_text,
             height=46,
@@ -87,6 +93,7 @@ def main(page: ft.Page, sidebar_open=False):
         )
 
     def dropdown_input(options: list[str]) -> ft.Dropdown:
+        # setting up styled dropdowns with a fixed scroll height for better usability
         return ft.Dropdown(
             options=[ft.DropdownOption(key=opt, text=opt) for opt in options],
             value=options[0] if len(options) > 0 else None,
@@ -109,6 +116,7 @@ def main(page: ft.Page, sidebar_open=False):
         )
 
     def labeled_field(label: str, control: ft.Control, col: int = 6) -> ft.Container:
+        # adding labels on top of our inputs and placing them in our responsive grid
         return ft.Container(
             col={"xs": 12, "md": col},
             content=ft.Column(
@@ -121,8 +129,9 @@ def main(page: ft.Page, sidebar_open=False):
             ),
         )
 
+    # initializing the sidebar and setting this screen as active
     sidebar = build_sidebar(page, on_menu_item_click, current_screen="Vehicle", is_open=sidebar_open)
-
+    # the hamburger icon to slide the sidebar in and out
     menu_button = ft.IconButton(
         icon=ft.icons.Icons.MENU,
         icon_size=28,
@@ -130,31 +139,34 @@ def main(page: ft.Page, sidebar_open=False):
         on_click=lambda e: (toggle_sidebar(sidebar), page.update()),
     )
 
+    # trackers for the form title and primary button text
     form_title = ft.Text("Add vehicle", style=SECTION_TITLE_STYLE)
     primary_action_label = ft.Text("Add", color="white", weight=ft.FontWeight.W_700)
-
     def show_add_form(e=None):
+        # making the form visible and setting it up for a new entry
         form_title.value = "Add vehicle"
-        primary_action_label.value = "Add"
+        primary_action_label.value = "Save"
         form_box.visible = True
         page.update()
 
     def toggle_add_form(e=None):
+        # toggling form visibility based on whether it is already open for adding
         if form_box.visible and form_title.value == "Add vehicle":
             hide_edit_form()
             return
         show_add_form()
 
     def show_edit_form(e=None):
-        form_title.value = "Add vehicle"
-        primary_action_label.value = "Add"
+        # using the same form box but switching labels for edit mode
+        form_title.value = "Edit vehicle"
+        primary_action_label.value = "Save"
         form_box.visible = True
         page.update()
 
     def hide_edit_form(e=None):
         form_box.visible = False
         page.update()
-
+    # the row containing our global search and filtering tools for the vehicle table
     filters_row = ft.ResponsiveRow(
         columns=12,
         run_spacing=10,
@@ -241,6 +253,152 @@ def main(page: ft.Page, sidebar_open=False):
         ],
     )
 
+    sample_vehicle_data = [
+        # dummy records for building the table and pagination logic
+        {"plate_no": "ABC 1234", "make_model": "Toyota Vios", "year": "2020", "type": "Private car", "owner": "Juan Dela Cruz"},
+        {"plate_no": "XYZ 5678", "make_model": "Honda Civic", "year": "2019", "type": "Private car", "owner": "Maria Santos"},
+        {"plate_no": "DEF 9012", "make_model": "Ford Ranger", "year": "2021", "type": "Pickup truck", "owner": "Pedro Reyes"},
+        {"plate_no": "GHI 3456", "make_model": "Mitsubishi Montero", "year": "2018", "type": "SUV", "owner": "Ana Garcia"},
+        {"plate_no": "JKL 7890", "make_model": "Hyundai Tucson", "year": "2022", "type": "SUV", "owner": "Carlos Mendoza"},
+        {"plate_no": "MNO 1357", "make_model": "Nissan Navara", "year": "2020", "type": "Pickup truck", "owner": "Rosa Lim"},
+        {"plate_no": "PQR 2468", "make_model": "Toyota Fortuner", "year": "2019", "type": "SUV", "owner": "Miguel Torres"},
+        {"plate_no": "STU 3690", "make_model": "Honda CR-V", "year": "2021", "type": "SUV", "owner": "Elena Cruz"},
+        {"plate_no": "VWX 4812", "make_model": "Ford Everest", "year": "2017", "type": "SUV", "owner": "Roberto Diaz"},
+        {"plate_no": "YZA 5924", "make_model": "Mitsubishi Strada", "year": "2018", "type": "Pickup truck", "owner": "Lourdes Ramos"},
+        {"plate_no": "BCD 6035", "make_model": "Toyota Hilux", "year": "2022", "type": "Pickup truck", "owner": "Fernando Reyes"},
+        {"plate_no": "EFG 7146", "make_model": "Honda City", "year": "2020", "type": "Sedan", "owner": "Carmen Flores"},
+        {"plate_no": "HIJ 8257", "make_model": "Nissan Patrol", "year": "2016", "type": "SUV", "owner": "Antonio Valdez"},
+        {"plate_no": "KLM 9368", "make_model": "Hyundai Santa Fe", "year": "2019", "type": "SUV", "owner": "Gloria Santos"},
+        {"plate_no": "NOP 0479", "make_model": "Ford Focus", "year": "2018", "type": "Sedan", "owner": "Ricardo Moreno"},
+    ]
+
+    # pagination trackers for the data list
+    current_page = {"value": 1}
+    items_per_page = {"value": 10}
+    total_items = {"value": len(sample_vehicle_data)}
+    all_rows_data = sample_vehicle_data.copy()
+    def loadTable(page=1, per_page=10):
+        # picking which vehicle rows to show based on our page index
+        sample_vehicles = [
+            # local list for our demo pagination
+            {"plate_no": "ABC 1234", "make_model": "Toyota Vios", "year": "2020", "type": "Private car", "owner": "Juan Dela Cruz"},
+            {"plate_no": "XYZ 5678", "make_model": "Honda Civic", "year": "2019", "type": "Private car", "owner": "Maria Santos"},
+            {"plate_no": "DEF 9012", "make_model": "Ford Ranger", "year": "2021", "type": "Pickup truck", "owner": "Pedro Reyes"},
+            {"plate_no": "GHI 3456", "make_model": "Mitsubishi Montero", "year": "2018", "type": "SUV", "owner": "Ana Garcia"},
+            {"plate_no": "JKL 7890", "make_model": "Hyundai Tucson", "year": "2022", "type": "SUV", "owner": "Carlos Mendoza"},
+            {"plate_no": "MNO 1357", "make_model": "Nissan Navara", "year": "2020", "type": "Pickup truck", "owner": "Rosa Flores"},
+            {"plate_no": "PQR 2468", "make_model": "Toyota Fortuner", "year": "2019", "type": "SUV", "owner": "Miguel Torres"},
+            {"plate_no": "STU 3690", "make_model": "Honda CR-V", "year": "2021", "type": "SUV", "owner": "Elena Castillo"},
+            {"plate_no": "VWX 4826", "make_model": "Ford Everest", "year": "2020", "type": "SUV", "owner": "Roberto Silva"},
+            {"plate_no": "YZA 5173", "make_model": "Mitsubishi Strada", "year": "2018", "type": "Pickup truck", "owner": "Lourdes Rivera"},
+            {"plate_no": "BCD 6249", "make_model": "Toyota Hilux", "year": "2022", "type": "Pickup truck", "owner": "Fernando Lopez"},
+            {"plate_no": "EFG 7381", "make_model": "Nissan Patrol", "year": "2019", "type": "SUV", "owner": "Carmen Morales"},
+        ]
+        total_items["value"] = len(sample_vehicles)
+        # math to get the start and end of our data slice
+        start_idx = (page - 1) * per_page
+        end_idx = min(start_idx + per_page, len(sample_vehicles))
+        page_rows = sample_vehicles[start_idx:end_idx]
+        # repopulating the table with our selected data
+        table.rows.clear()
+        for vehicle in page_rows:
+            table.rows.append(
+                ft.DataRow(cells=[
+                    ft.DataCell(ft.Text(vehicle["plate_no"], style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(vehicle["make_model"], style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(vehicle["year"], style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(vehicle["type"], style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(vehicle["owner"], style=TABLE_DATA_STYLE)),
+                    ft.DataCell(
+                        ft.Row(controls=[
+                            ft.Button(
+                                content=ft.Text("Edit", color="white", size=12, weight=ft.FontWeight.W_700),
+                                on_click=show_edit_form,
+                                style=BLUE_BUTTON_STYLE,
+                                height=32,
+                            ),
+                            ft.Button(
+                                content=ft.Text("Delete", color="white", size=12, weight=ft.FontWeight.W_700),
+                                # delete logic currently a placeholder for the user to implement
+                                on_click=lambda e: None,
+                                style=DANGER_BUTTON_STYLE,
+                                height=32,
+                            ),
+                        ], spacing=6, tight=True)
+                    ),
+                ])
+            )
+        update_pagination_controls()
+        table.update()
+
+    def update_pagination_controls():
+        # figuring out the total page count and updating our position label
+        total_pages = max(1, (total_items["value"] + items_per_page["value"] - 1) // items_per_page["value"])
+        page_info_text.value = f"Page {current_page['value']} of {total_pages} ({total_items['value']} total items)"
+        page_info_text.update()
+        # disabling arrows if we are at the start or end of the list
+        prev_button.disabled = current_page["value"] <= 1
+        next_button.disabled = current_page["value"] >= total_pages
+        prev_button.update()
+        next_button.update()
+        # rebuilding the numeric buttons at the bottom
+        page_buttons_container.controls.clear()
+        start_page = max(1, current_page["value"] - 2)
+        end_page = min(total_pages, start_page + 4)
+
+        if start_page > 1:
+            page_buttons_container.controls.append(
+                ft.TextButton("1", on_click=lambda e: go_to_page(1), style=ft.ButtonStyle(color=COLOR_PRIMARY))
+            )
+            if start_page > 2:
+                page_buttons_container.controls.append(ft.Text("..."))
+
+        for page_num in range(start_page, end_page + 1):
+            is_current = page_num == current_page["value"]
+            page_buttons_container.controls.append(
+                ft.TextButton(
+                    str(page_num),
+                    on_click=lambda e, p=page_num: go_to_page(p),
+                    style=ft.ButtonStyle(
+                        # highlighting the button for our active page
+                        color=COLOR_PRIMARY if not is_current else "white",
+                        bgcolor=COLOR_PRIMARY if is_current else ft.Colors.TRANSPARENT
+                    )
+                )
+            )
+
+        if end_page < total_pages:
+            if end_page < total_pages - 1:
+                page_buttons_container.controls.append(ft.Text("..."))
+            page_buttons_container.controls.append(
+                ft.TextButton(str(total_pages), on_click=lambda e: go_to_page(total_pages), style=ft.ButtonStyle(color=COLOR_PRIMARY))
+            )
+
+        page_buttons_container.update()
+
+    def go_to_page(page_num):
+        # when a specific page button is clicked we reload the table with that index
+        current_page["value"] = page_num
+        loadTable(page_num, items_per_page["value"])
+
+    def change_items_per_page(e):
+        # user changed the page size so we reset back to page 1 to avoid showing an empty index
+        items_per_page["value"] = int(e.control.value)
+        current_page["value"] = 1  # Reset to first page
+        loadTable(1, items_per_page["value"])
+
+    def go_to_previous_page(e):
+        # simple decrement of the page counter
+        if current_page["value"] > 1:
+            go_to_page(current_page["value"] - 1)
+
+    def go_to_next_page(e):
+        # simple increment of the page counter with a safety check against the max page
+        total_pages = max(1, (total_items["value"] + items_per_page["value"] - 1) // items_per_page["value"])
+        if current_page["value"] < total_pages:
+            go_to_page(current_page["value"] + 1)
+
+    # defining the table structure including its headers and borders
     table = ft.DataTable(
         border=ft.border.all(1, COLOR_BORDER),
         border_radius=12,
@@ -259,40 +417,73 @@ def main(page: ft.Page, sidebar_open=False):
             ft.DataColumn(label=ft.Text("Owner", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Actions", style=TABLE_HEADER_STYLE)),
         ],
-        rows=[
-            ft.DataRow(
-                cells=[
-                    ft.DataCell(ft.Text("ABC 1234", style=TABLE_DATA_STYLE)),
-                    ft.DataCell(ft.Text("Toyota Vios", style=TABLE_DATA_STYLE)),
-                    ft.DataCell(ft.Text("2020", style=TABLE_DATA_STYLE)),
-                    ft.DataCell(ft.Text("Private car", style=TABLE_DATA_STYLE)),
-                    ft.DataCell(ft.Text("Juan Dela Cruz", style=TABLE_DATA_STYLE)),
-                    ft.DataCell(
-                        ft.Row(
-                            controls=[
-                                ft.Button(
-                                    content=ft.Text("Edit", color="white", size=12, weight=ft.FontWeight.W_700),
-                                    on_click=show_edit_form,
-                                    style=BLUE_BUTTON_STYLE,
-                                    height=32,
-                                ),
-                                ft.Button(
-                                    content=ft.Text("Delete", color="white", size=12, weight=ft.FontWeight.W_700),
-                                    on_click=lambda e: None,
-                                    style=DANGER_BUTTON_STYLE,
-                                    height=32,
-                                ),
-                            ],
-                            spacing=6,
-                            tight=True,
-                        )
-                    ),
-                ]
-            ),
-        ],
+        rows=[],
     )
 
+    items_per_page_dropdown = ft.Dropdown(
+        # control for picking how many records are shown at a time
+        value="10",
+        options=[
+            ft.DropdownOption("5"),
+            ft.DropdownOption("10"),
+            ft.DropdownOption("25"),
+            ft.DropdownOption("50"),
+        ],
+        width=80,
+        height=40,
+        text_size=12,
+        on_select=change_items_per_page,
+        content_padding=ft.padding.symmetric(horizontal=8, vertical=0),
+    )
+
+    # back button icon
+    prev_button = ft.IconButton(
+        icon=ft.Icons.CHEVRON_LEFT,
+        icon_color=COLOR_PRIMARY,
+        on_click=go_to_previous_page,
+        disabled=True,
+        tooltip="Previous page"
+    )
+
+    # forward button icon
+    next_button = ft.IconButton(
+        icon=ft.Icons.CHEVRON_RIGHT,
+        icon_color=COLOR_PRIMARY,
+        on_click=go_to_next_page,
+        disabled=True,
+        tooltip="Next page"
+    )
+    # container for the dynamic page number buttons
+    page_buttons_container = ft.Row(spacing=4, tight=True)
+    page_info_text = ft.Text(
+        "Page 1 of 1 (0 total items)",
+        size=12,
+        color=COLOR_TEXT_HINT,
+        font_family="Lato"
+    )
+    pagination_controls = ft.Container(
+        # assembly for the pagination control bar at the bottom
+        content=ft.Row(
+            controls=[
+                ft.Text("Show:", size=12, color=COLOR_TEXT_HINT, font_family="Lato"),
+                items_per_page_dropdown,
+                ft.Container(width=20),  # Spacer
+                prev_button,
+                page_buttons_container,
+                next_button,
+                ft.Container(width=20),  # Spacer
+                page_info_text,
+            ],
+            alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
+            vertical_alignment=ft.CrossAxisAlignment.CENTER,
+        ),
+        padding=ft.padding.symmetric(horizontal=16, vertical=12),
+        border=ft.border.all(1, COLOR_BORDER),
+        border_radius=8,
+        bgcolor="#f8f9fa",
+    )
     table_block = ft.Container(
+        # wrapping the table and title in a styled block
         content=ft.Column(
             controls=[
                 ft.Row(
@@ -318,6 +509,7 @@ def main(page: ft.Page, sidebar_open=False):
                     ),
                     border_radius=12,
                 ),
+                pagination_controls,
             ],
             spacing=10,
         ),
@@ -326,8 +518,8 @@ def main(page: ft.Page, sidebar_open=False):
         border_radius=14,
         bgcolor="white",
     )
-
     form_box = ft.Container(
+        # the hidden container used for our data entry form
         content=ft.Column(
             controls=[
                 ft.Row(
@@ -355,6 +547,7 @@ def main(page: ft.Page, sidebar_open=False):
                 ),
                 ft.Text("Vehicle details", style=SECTION_TITLE_STYLE),
                 ft.ResponsiveRow(
+                    # grid layout for all our vehicle form fields
                     columns=12,
                     run_spacing=10,
                     controls=[
@@ -402,8 +595,8 @@ def main(page: ft.Page, sidebar_open=False):
         bgcolor="white",
         visible=False,
     )
-
     main_content = ft.Container(
+        # master layout for the vehicle screen
         content=ft.ListView(
             controls=[
                 ft.Row([menu_button], alignment=ft.MainAxisAlignment.START),
@@ -419,7 +612,7 @@ def main(page: ft.Page, sidebar_open=False):
         padding=ft.padding.symmetric(horizontal=40, vertical=30),
         expand=True,
     )
-
+    # stacking the sidebar over our main content
     page.add(
         ft.Stack(
             controls=[
@@ -429,3 +622,6 @@ def main(page: ft.Page, sidebar_open=False):
             expand=True,
         )
     )
+
+    # trigger the table load once the screen mounts
+    loadTable(1, 10)

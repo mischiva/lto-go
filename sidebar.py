@@ -1,14 +1,16 @@
+# pulling in flet for building the sidebar ui
 import flet as ft
+# getting our sidebar styles
 from styles import sidebar_styles as s
 
 
 def build_sidebar(page, on_menu_click, current_screen="Home", is_open=False):
-    """Build sidebar with animation"""
+    # building the list of navigation items dynamically from our style sheet
 
-    # Build menu item controls
     menu_controls = []
     for item_name in s.MENU_ITEMS:
         is_active = item_name == current_screen
+        # Build individual menu item container
         menu_item = ft.Container(
             content=ft.Text(
                 item_name,
@@ -17,6 +19,7 @@ def build_sidebar(page, on_menu_click, current_screen="Home", is_open=False):
             width=float("inf"),
             alignment=ft.Alignment.CENTER_LEFT,
             padding=s.MENU_ITEM_PADDING,
+            # highlighting the item if it matches the screen we are currently on
             bgcolor=s.ACTIVE_BG if is_active else None,
             data={"active": is_active},
             on_hover=_on_menu_item_hover,
@@ -24,11 +27,11 @@ def build_sidebar(page, on_menu_click, current_screen="Home", is_open=False):
         )
         menu_controls.append(menu_item)
 
-    # Sidebar content
     sidebar_content = ft.Column(
+        # arranging the sidebar elements vertically
         controls=[
-            # Logo and header section
             ft.Container(
+                # top section with the logo and brand tagline
                 content=ft.Column(
                     controls=[
                         ft.Row(
@@ -64,20 +67,20 @@ def build_sidebar(page, on_menu_click, current_screen="Home", is_open=False):
                 padding=s.HEADER_VERTICAL_PADDING,
             ),
 
-            # Divider
+            # Decorative horizontal line separating header from navigation
             ft.Container(height=1, bgcolor=s.DIVIDER),
 
-            # Menu items
+            # List of navigation links generated earlier
             ft.Column(
                 controls=menu_controls,
                 spacing=0,
                 width=float("inf"),
             ),
 
-            # Spacer to push sign out to bottom
+            # Flexible container that absorbs extra vertical space
             ft.Container(expand=True),
 
-            # Sign out button
+            # Sign out trigger at the bottom of the sidebar
             ft.Container(
                 content=ft.Button(
                     content=ft.Text("Sign out", style=s.SIGN_OUT_TEXT_STYLE),
@@ -94,11 +97,12 @@ def build_sidebar(page, on_menu_click, current_screen="Home", is_open=False):
         expand=True,
     )
 
-    # Sidebar container
+    # The outer sidebar shell using Offset for the slide animation
     sidebar = ft.Container(
         content=sidebar_content,
         width=s.SIDEBAR_WIDTH,
         bgcolor=s.SIDEBAR_BG,
+        # Initial position: x=0 (visible) or x=-1 (hidden off-screen to the left)
         offset=ft.Offset(0, 0) if is_open else ft.Offset(-1, 0),
         animate_offset=ft.Animation(400, ft.AnimationCurve.EASE_IN_OUT),
         shadow=ft.BoxShadow(blur_radius=18, color=s.SHADOW_COLOR, offset=ft.Offset(2, 0)),
@@ -107,16 +111,18 @@ def build_sidebar(page, on_menu_click, current_screen="Home", is_open=False):
     return sidebar
 
 
+# Logic function to switch the visibility state of the sidebar container
 def toggle_sidebar(sidebar):
-    """Toggle sidebar visibility with animation"""
     if sidebar.offset.x == -1:
-        sidebar.offset = ft.Offset(0, 0)
+        sidebar.offset = ft.Offset(0, 0) # Slide in
     else:
-        sidebar.offset = ft.Offset(-1, 0)
+        sidebar.offset = ft.Offset(-1, 0) # Slide out
     sidebar.update()
 
 
+# Internal helper to manage the visual background color during hover interactions
 def _on_menu_item_hover(e):
+    # Parse the boolean hover state from Flet event data
     is_hovered = s.is_hovered(e.data)
     is_active = bool(e.control.data and e.control.data.get("active"))
     if is_active:

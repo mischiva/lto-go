@@ -1,5 +1,8 @@
+# pulling in flet so we can actually build this cross platform ui
 import flet as ft
+# getting our global fonts so all our text looks clean and consistent
 from styles.fonts import GOOGLE_FONTS
+# using s as an alias for our home styles so we don't have to type out the whole name every time
 from styles import home_styles as s
 from sidebar import build_sidebar, toggle_sidebar
 from driver import main as driver_main
@@ -9,26 +12,29 @@ from violation import main as violation_main
 from reports import main as reports_main
 
 
+# this is the main hub for the dashboard where users decide where to go next
 def main(page: ft.Page, sidebar_open=False):
-    # Page
+    # setting up the background and padding based on our style sheet
     page.bgcolor = s.PAGE_BGCOLOR
     page.padding = s.PAGE_PADDING
+    # registering our fonts so flet knows how to render the custom typography
     page.fonts = GOOGLE_FONTS
 
-    # Navigation
     def go_to(screen_main, keep_sidebar_open=False):
+        # we wipe the page clean before mounting the new screen so nothing overlaps
         page.controls.clear()
         screen_main(page, sidebar_open=keep_sidebar_open)
         page.update()
 
     def go_to_sign_in():
+        # specific exit logic to take the user back to the login screen
         from sign_in import main as sign_in_main
         page.controls.clear()
         sign_in_main(page)
         page.update()
 
-    # Card builder
     def make_card(title, description, image_path, on_click, expand=1):
+        # this helper builds those big navigation cards by stacking the image and text together
         card_content = s.build_card_content(title, description, image_path)
         overlay_button = s.build_card_overlay_button(on_click)
 
@@ -45,7 +51,7 @@ def main(page: ft.Page, sidebar_open=False):
             clip_behavior=ft.ClipBehavior.HARD_EDGE,
         )
 
-    # First cards row
+    # first row of navigation cards for drivers and vehicles
     cards_row1 = ft.Row(
         controls=[
             make_card(
@@ -65,7 +71,7 @@ def main(page: ft.Page, sidebar_open=False):
         expand=True,
     )
 
-    # Second cards row
+    # Layout organization: Second row contains Registration and Violation modules
     cards_row2 = ft.Row(
         controls=[
             make_card(
@@ -85,7 +91,7 @@ def main(page: ft.Page, sidebar_open=False):
         expand=True,
     )
 
-    # Third cards row
+    # third row specifically for generating reports which we center by using spacers
     cards_row3 = ft.Row(
         controls=[
             ft.Container(expand=1),
@@ -102,7 +108,7 @@ def main(page: ft.Page, sidebar_open=False):
         expand=True,
     )
 
-    # Welcome header
+    # setting up the menu icon at the top left
     menu_button = ft.IconButton(
         icon=ft.icons.Icons.MENU,
         icon_size=28,
@@ -112,7 +118,7 @@ def main(page: ft.Page, sidebar_open=False):
     header = ft.Container(
         content=ft.Row(
             controls=[
-                menu_button,
+                menu_button, # Triggers the sidebar
                 ft.Column(
                     controls=[
                         ft.Text(
@@ -154,9 +160,8 @@ def main(page: ft.Page, sidebar_open=False):
         spacing=0,
     )
 
-    # Build sidebar
     def on_menu_item_click(item_name):
-        # Handle menu item clicks
+        # this handles the logic whenever someone clicks an item in the sidebar
         if item_name == "__close__":
             toggle_sidebar(sidebar)
             return
@@ -176,8 +181,10 @@ def main(page: ft.Page, sidebar_open=False):
             go_to(reports_main, keep_sidebar_open=True)
         page.update()
 
+    # building the sidebar and passing in the current screen name so it knows what to highlight
     sidebar = build_sidebar(page, on_menu_item_click, current_screen="Home", is_open=sidebar_open)
     
+    # linking the header menu button to the sidebar toggle function
     menu_button.on_click = lambda e: (toggle_sidebar(sidebar), page.update())
 
     main_content = ft.Container(
@@ -186,7 +193,6 @@ def main(page: ft.Page, sidebar_open=False):
         expand=True,
     )
 
-    # place it on top
     page_stack = ft.Stack(
         controls=[
             main_content,

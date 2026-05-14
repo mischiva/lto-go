@@ -1,23 +1,28 @@
+# pulling in flet for the ui
 import flet as ft
+# getting our global fonts and local login styles
 from styles.fonts import GOOGLE_FONTS
 from styles import sign_in_styles as s
 from home import main as home_main
 
 def main(page: ft.Page):
+    # basic page setup for the login screen
     page.title = s.PAGE_TITLE
     page.bgcolor = s.PAGE_BGCOLOR
     page.padding = s.PAGE_PADDING
     page.fonts = GOOGLE_FONTS
 
     def go_to_home(e):
+        # wiping the page and taking the user to the dashboard
         page.controls.clear()
         home_main(page, sidebar_open=False)
         page.update()
 
     layout = ft.Row(
+        # split screen with image on the left and form on the right
         controls=[
-            # Left div
             ft.Container(
+                # hero image container
                 content=ft.Image(
                     src=s.ENTRY_IMAGE_SRC,
                     fit="cover",
@@ -25,12 +30,12 @@ def main(page: ft.Page):
                 expand=1,
             ),
 
-            # Right div
             ft.Container(
+                # right side container for the login form and branding
                 content=ft.Column(
                     controls=[
-                        # Header
                         ft.Row(
+                            # logo and brand name section
                             controls=[
                                 ft.Image(src=s.LOGO_IMAGE_SRC, width=s.LOGO_WIDTH, fit="contain"),
                                 ft.Column(
@@ -56,9 +61,10 @@ def main(page: ft.Page):
                             vertical_alignment=ft.CrossAxisAlignment.START,
                         ),
                         ft.Container(height=s.HEADER_GAP),
+                        
                         ft.Column(
+                            # actual username and password inputs
                             controls=[
-                                # Username
                                 ft.Text(
                                     "Username:",
                                     style=s.FIELD_LABEL_STYLE,
@@ -66,7 +72,7 @@ def main(page: ft.Page):
                                 ft.Container(height=s.FIELD_LABEL_GAP),
                                 s.build_text_field(hint_text="Enter username"),
                                 ft.Container(height=s.FIELDS_GAP),
-                                # Password
+                                
                                 ft.Text(
                                     "Password:",
                                     style=s.FIELD_LABEL_STYLE,
@@ -78,8 +84,8 @@ def main(page: ft.Page):
                                     can_reveal_password=True,
                                 ),
                                 ft.Container(height=s.FORM_TO_BUTTON_GAP),
-                                # Sign in button
                                 ft.Row(
+                                    # centered sign in action button
                                     controls=[
                                         ft.Button(
                                             content=ft.Text(
@@ -113,6 +119,6 @@ def main(page: ft.Page):
 
     page.add(layout)
 
-
+# Entry point for standalone execution
 if __name__ == "__main__":
     ft.app(target=main)
