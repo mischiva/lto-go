@@ -119,13 +119,16 @@ def main(page: ft.Page, sidebar_open=False):
 
     def labeled_field(label: str, control: ft.Control, col: int = 6) -> ft.Container:
         # adding labels on top of our inputs and placing them in our responsive grid
+        controls = [ft.Text(label, style=LABEL_STYLE), control]
+        # if the control has an attached error Text control, add it below the input
+        err = getattr(control, "error", None)
+        if err is not None:
+            controls.append(err)
+
         return ft.Container(
             col={"xs": 12, "md": col},
             content=ft.Column(
-                controls=[
-                    ft.Text(label, style=LABEL_STYLE),
-                    control,
-                ],
+                controls=controls,
                 spacing=6,
                 tight=True,
             ),
@@ -276,6 +279,8 @@ def main(page: ft.Page, sidebar_open=False):
             table.rows.append(
                 ft.DataRow(cells=[
                     ft.DataCell(ft.Text(vehicle["plate_no"], style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(vehicle.get("engine_no", ""), style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(vehicle.get("chassis_no", ""), style=TABLE_DATA_STYLE)),
                     ft.DataCell(ft.Text(vehicle["make_model"], style=TABLE_DATA_STYLE)),
                     ft.DataCell(ft.Text(str(vehicle["year"]), style=TABLE_DATA_STYLE)),
                     ft.DataCell(ft.Text(vehicle["type"], style=TABLE_DATA_STYLE)),
@@ -365,22 +370,110 @@ def main(page: ft.Page, sidebar_open=False):
             "vehicle_type": fVehicleType.value or "",
             "make": fMake.value or "",
             "model": fModel.value or "",
-            "year": int(fYear.value) if fYear.value else 0,
+            "year": fYear.value or "",
             "color": fColor.value or "",
             "owner_id": fOwner.value or "",
         }
 
+    # use shared show_dialog(page, title, message)
+
     def saveDetails(e):
-        data = getFormData()
         try:
-            if editingPlateNo["value"]:
-                vehicle_db.updateVehicle(editingPlateNo["value"], data)
+            data = getFormData()
+            print("saveDetails called", data)
+
+            # basic client-side validation
+            errors: list[str] = []
+            if not data["plate_no"].strip():
+                errors.append("Plate number is required.")
+            if not data["engine_no"].strip():
+                errors.append("Engine number is required.")
+            if not data["chassis_no"].strip():
+                errors.append("Chassis number is required.")
+            if not data["make"].strip():
+                errors.append("Make is required.")
+            if not data["model"].strip():
+                errors.append("Model is required.")
+            if not data["owner_id"].strip():
+                errors.append("Registered owner is required.")
+
+            # validate year is an integer and plausible
+            year_val = 0
+            if data["year"] != "":
+                try:
+                    year_val = int(data["year"])
+                    if year_val <= 0 or year_val > 9999:
+                        errors.append("Year must be a positive integer.")
+                except Exception:
+                    errors.append("Year must be a number.")
             else:
-                vehicle_db.addVehicle(data)
-            hide_edit_form()
-            loadTable(search_input.value, type_dropdown.value, current_page["value"], items_per_page["value"])
+                errors.append("Year is required.")
+
+            # clear previous error messages
+            for c in (fPlateNo, fEngineNo, fChassisNo, fMake, fModel, fYear, fOwner):
+                try:
+                    if getattr(c, "error", None) is not None:
+                        c.error.value = ""
+                except Exception:
+                    pass
+
+            if errors:
+                # set inline error messages for the first failing fields
+                if not data["plate_no"].strip():
+                    fPlateNo.error.value = "Plate number is required."
+                if not data["engine_no"].strip():
+                    fEngineNo.error.value = "Engine number is required."
+                if not data["chassis_no"].strip():
+                    fChassisNo.error.value = "Chassis number is required."
+                if not data["make"].strip():
+                    fMake.error.value = "Make is required."
+                if not data["model"].strip():
+                    fModel.error.value = "Model is required."
+                if not data["owner_id"].strip():
+                    fOwner.error.value = "Registered owner is required."
+                if data["year"] == "":
+                    fYear.error.value = "Year is required."
+                page.update()
+                return
+
+            # normalize the year value before saving
+            data["year"] = year_val
+
+            # duplicate checks
+            existing = vehicle_db.getVehicle(data["plate_no"]) if data["plate_no"] else None
+            if editingPlateNo["value"]:
+                # if changing plate no to another existing plate -> error
+                if data["plate_no"] != editingPlateNo["value"] and existing:
+                    fPlateNo.error.value = "A vehicle with that plate number already exists."
+                    page.update()
+                    return
+            else:
+                if existing:
+                    fPlateNo.error.value = "A vehicle with that plate number already exists."
+                    page.update()
+                    return
+
+            try:
+                if editingPlateNo["value"]:
+                    vehicle_db.updateVehicle(editingPlateNo["value"], data)
+                else:
+                    vehicle_db.addVehicle(data)
+                hide_edit_form()
+                loadTable(search_input.value, type_dropdown.value, current_page["value"], items_per_page["value"])
+                page.snack_bar = ft.SnackBar(ft.Text("Vehicle saved successfully."))
+                page.snack_bar.open = True
+                page.update()
+            except Exception as ex:
+                # show friendly error to user and log to console
+                page.snack_bar = ft.SnackBar(ft.Text(str(ex)))
+                page.snack_bar.open = True
+                page.update()
+                print("DB error:", ex)
         except Exception as ex:
-            print("DB error:", ex)
+            print("saveDetails unexpected error:", ex)
+            page.snack_bar = ft.SnackBar(ft.Text(str(ex)))
+            page.snack_bar.open = True
+            page.update()
 
     def editVehicle(plate_no):
         row = vehicle_db.getVehicle(plate_no)
@@ -410,14 +503,21 @@ def main(page: ft.Page, sidebar_open=False):
         fOwner.update()
 
     fPlateNo = text_input("e.g. ABC 1234")
+    fPlateNo.error = ft.Text("", color="red", size=12)
     fEngineNo = text_input("")
+    fEngineNo.error = ft.Text("", color="red", size=12)
     fChassisNo = text_input("")
+    fChassisNo.error = ft.Text("", color="red", size=12)
     fVehicleType = dropdown_input(["Motorcycle", "Private car", "PUV"])
     fMake = text_input("e.g. Toyota")
+    fMake.error = ft.Text("", color="red", size=12)
     fModel = text_input("e.g. Vios")
+    fModel.error = ft.Text("", color="red", size=12)
     fYear = text_input("e.g. 2020")
+    fYear.error = ft.Text("", color="red", size=12)
     fColor = text_input("e.g. White")
     fOwner = dropdown_input([])
+    fOwner.error = ft.Text("", color="red", size=12)
     editingPlateNo = {"value": None}
 
     def go_to_previous_page(e):
@@ -444,6 +544,8 @@ def main(page: ft.Page, sidebar_open=False):
         data_text_style=TABLE_DATA_STYLE,
         columns=[
             ft.DataColumn(label=ft.Text("Plate no.", style=TABLE_HEADER_STYLE)),
+            ft.DataColumn(label=ft.Text("Engine no.", style=TABLE_HEADER_STYLE)),
+            ft.DataColumn(label=ft.Text("Chassis no.", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Make / model", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Year", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Type", style=TABLE_HEADER_STYLE)),

@@ -158,13 +158,15 @@ def main(page: ft.Page, sidebar_open=False):
 
     def labeled_field(label: str, control: ft.Control, col: int = 6) -> ft.Container:
         # wrapping input controls with a descriptive label for better usability
+        controls = [ft.Text(label, style=LABEL_STYLE), control]
+        err = getattr(control, "error", None)
+        if err is not None:
+            controls.append(err)
+
         return ft.Container(
             col={"xs": 12, "md": col},
             content=ft.Column(
-                controls=[
-                    ft.Text(label, style=LABEL_STYLE),
-                    control,
-                ],
+                controls=controls,
                 spacing=6,
                 tight=True,
             ),
@@ -416,25 +418,116 @@ def main(page: ft.Page, sidebar_open=False):
         loadTable(search, licenseType, licenseStatus, sex, 1, items_per_page["value"])
 
     def saveDetails(e):
-        # deciding whether to run an insert or an update based on the license flag
-        data = getFormData()
         try:
+            # deciding whether to run an insert or an update based on the license flag
+            data = getFormData()
+            print("saveDetails called", data)
+
+            # basic validation
+            errors: list[str] = []
+            if not data["license_no"].strip():
+                errors.append("License number is required.")
+            if not data["last_name"].strip():
+                errors.append("Last name is required.")
+            if not data["first_name"].strip():
+                errors.append("First name is required.")
+            if not data["dob"].strip():
+                errors.append("Date of birth is required.")
+
+            # clear previous errors
+            for c in (fLicenseNo, fLastName, fFirstName, fDob, fLicenseIssued, fLicenseExpiry):
+                try:
+                    if getattr(c, "error", None) is not None:
+                        c.error.value = ""
+                except Exception:
+                    pass
+
+            if errors:
+                print("validation errors:", errors)
+                if not data["license_no"].strip():
+                    fLicenseNo.error.value = "License number is required."
+                if not data["last_name"].strip():
+                    fLastName.error.value = "Last name is required."
+                if not data["first_name"].strip():
+                    fFirstName.error.value = "First name is required."
+                if not data["dob"].strip():
+                    fDob.error.value = "Date of birth is required."
+                page.update()
+                return
+
+            # duplicate checks
+            existing = db.getDriver(data["license_no"]) if data["license_no"] else None
             if editingLicenseNo["value"]:
-                db.updateDriver(editingLicenseNo["value"], data)
+                if data["license_no"] != editingLicenseNo["value"] and existing:
+                    fLicenseNo.error.value = "A driver with that license number already exists."
+                    page.update()
+                    return
             else:
-                db.addDriver(data)
-            hide_edit_form()
-            # Reload current page after save
-            loadTable(
-                searchInput.value or "",
-                typeMap.get(typeInput.value, ""),
-                licenseStatusMap.get(statusInput.value, ""),
-                sexMap.get(sexInput.value, ""),
-                current_page["value"],
-                items_per_page["value"]
-            )
+                if existing:
+                    fLicenseNo.error.value = "A driver with that license number already exists."
+                    page.update()
+                    return
+
+            try:
+                # parse and validate dates (mm/dd/yyyy)
+                issued_date = None
+                expire_date = None
+                today = datetime.date.today()
+                if data["license_issued"]:
+                    try:
+                        issued_date = datetime.datetime.strptime(data["license_issued"], "%m/%d/%Y").date()
+                    except Exception:
+                        fLicenseIssued.error.value = "Invalid date (mm/dd/yyyy)"
+                        page.update()
+                        return
+                if data["license_expire"]:
+                    try:
+                        expire_date = datetime.datetime.strptime(data["license_expire"], "%m/%d/%Y").date()
+                    except Exception:
+                        fLicenseExpiry.error.value = "Invalid date (mm/dd/yyyy)"
+                        page.update()
+                        return
+
+                if issued_date and expire_date and issued_date > expire_date:
+                    fLicenseExpiry.error.value = "Expiry must be after issued date."
+                    page.update()
+                    return
+
+                # if expiry is today or earlier, auto-set status to Expired
+                if expire_date and expire_date <= today:
+                    data["license_status"] = "Expired"
+                    # show inline note under expiry
+                    fLicenseExpiry.error.value = "License already expired; status set to Expired."
+                    # continue to save (status updated)
+                if editingLicenseNo["value"]:
+                    print("performing updateDriver")
+                    db.updateDriver(editingLicenseNo["value"], data)
+                else:
+                    print("performing addDriver")
+                    db.addDriver(data)
+                hide_edit_form()
+                # Reload current page after save
+                loadTable(
+                    searchInput.value or "",
+                    typeMap.get(typeInput.value, ""),
+                    licenseStatusMap.get(statusInput.value, ""),
+                    sexMap.get(sexInput.value, ""),
+                    current_page["value"],
+                    items_per_page["value"]
+                )
+                page.snack_bar = ft.SnackBar(ft.Text("Driver saved successfully."))
+                page.snack_bar.open = True
+                page.update()
+            except Exception as ex:
+                page.snack_bar = ft.SnackBar(ft.Text(str(ex)))
+                page.snack_bar.open = True
+                page.update()
+                print("DB error:", ex)
         except Exception as ex:
-            print("DB error:", ex)
+            print("saveDetails unexpected error:", ex)
+            page.snack_bar = ft.SnackBar(ft.Text(str(ex)))
+            page.snack_bar.open = True
+            page.update()
 
     def editDriver(license_no):
         # fetching a single driver record and filling the form with its details
@@ -742,12 +835,16 @@ def main(page: ft.Page, sidebar_open=False):
     fMiddleName    = text_input("e.g. Magtanggol")
     fSuffix        = text_input("Jr., Sr., III")
     fLicenseNo     = text_input("A00-00-000000")
+    fLicenseNo.error = ft.Text("", color="red", size=12)
     fDob           = date_input("mm/dd/yyyy")
+    fDob.error = ft.Text("", color="red", size=12)
     fSex           = dropdown_input(["M - Male", "F - Female"])
     fLicenseType   = dropdown_input(["Non-Professional", "Professional", "Student"])
     fLicenseStatus = dropdown_input(["Valid", "Expired", "Suspended", "Revoked"])
     fLicenseIssued = date_input("mm/dd/yyyy")
+    fLicenseIssued.error = ft.Text("", color="red", size=12)
     fLicenseExpiry = date_input("mm/dd/yyyy")
+    fLicenseExpiry.error = ft.Text("", color="red", size=12)
     # tracking the specific record being updated
     editingLicenseNo = {"value": None}
     # the large form container used for creating or updating records
