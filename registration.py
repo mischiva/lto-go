@@ -82,7 +82,7 @@ def main(page: ft.Page, sidebar_open=False):
             border_color=s.COLOR_BORDER,
             focused_border_color=s.COLOR_PRIMARY,
             border_radius=12,
-            content_padding=ft.padding.symmetric(horizontal=14, vertical=0),
+            content_padding=ft.Padding.symmetric(horizontal=14, vertical=0),
         )
 
     def dropdown_input(options: list[str]) -> ft.Dropdown:
@@ -102,7 +102,7 @@ def main(page: ft.Page, sidebar_open=False):
             border_color=s.COLOR_BORDER,
             focused_border_color=s.COLOR_PRIMARY,
             border_radius=12,
-            content_padding=ft.padding.symmetric(horizontal=14, vertical=8),
+            content_padding=ft.Padding.symmetric(horizontal=14, vertical=8),
             text_size=14,
             menu_height=220,
             dense=True,
@@ -231,7 +231,7 @@ def main(page: ft.Page, sidebar_open=False):
                     border_color=s.COLOR_BORDER,
                     focused_border_color=s.COLOR_PRIMARY,
                     border_radius=12,
-                    content_padding=ft.padding.symmetric(horizontal=14, vertical=0),
+                    content_padding=ft.Padding.symmetric(horizontal=14, vertical=0),
                 ),
             ),
             ft.Container(
@@ -456,7 +456,7 @@ def main(page: ft.Page, sidebar_open=False):
         height=40,
         text_size=12,
         on_select=change_items_per_page,
-        content_padding=ft.padding.symmetric(horizontal=8, vertical=0),
+        content_padding=ft.Padding.symmetric(horizontal=8, vertical=0),
     )
 
     prev_button = ft.IconButton(
@@ -499,7 +499,7 @@ def main(page: ft.Page, sidebar_open=False):
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         ),
-        padding=ft.padding.symmetric(horizontal=16, vertical=12),
+        padding=ft.Padding.symmetric(horizontal=16, vertical=12),
         border=ft.border.all(1, s.COLOR_BORDER),
         border_radius=8,
         bgcolor="#f8f9fa",
@@ -623,7 +623,7 @@ def main(page: ft.Page, sidebar_open=False):
             spacing=16,
             expand=True,
         ),
-        padding=ft.padding.symmetric(horizontal=40, vertical=30),
+        padding=ft.Padding.symmetric(horizontal=40, vertical=30),
         expand=True,
     )
 

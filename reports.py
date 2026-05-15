@@ -73,7 +73,7 @@ def main(page: ft.Page, sidebar_open=False):
             expand=True,
             spacing=0,
         ),
-        padding=ft.padding.symmetric(horizontal=40, vertical=30),
+        padding=ft.Padding.symmetric(horizontal=40, vertical=30),
         expand=True,
     )
 

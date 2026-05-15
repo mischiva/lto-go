@@ -13,7 +13,7 @@ LOGO_IMAGE_SRC = "media/logo.png"
 LOGO_WIDTH = 250
 
 # specific padding for the right half of the split screen where the form lives
-RIGHT_PANEL_PADDING = ft.padding.only(top=90, left=50, right=50)
+RIGHT_PANEL_PADDING = ft.Padding.only(top=90, left=50, right=50)
 HEADER_ROW_SPACING = 16
 HEADER_SUBTITLE_SPACING = -20
 HEADER_GAP = 24
@@ -112,6 +112,6 @@ def build_text_field(hint_text: str, password: bool = False, can_reveal_password
         border_radius=TEXTFIELD_BORDER_RADIUS,
         cursor_color=COLOR_TEXT_PRIMARY,
         height=TEXT_FIELD_HEIGHT,
-        content_padding=ft.padding.symmetric(horizontal=20, vertical=0),
+        content_padding=ft.Padding.symmetric(horizontal=20, vertical=0),
         expand=True,
     )
