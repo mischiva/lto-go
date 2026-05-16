@@ -22,9 +22,9 @@ SIGN_OUT_HEIGHT = 48
 
 # SPACING AND LAYOUT
 TOP_LOGO_GAP = 10
-HEADER_VERTICAL_PADDING = ft.padding.symmetric(vertical=20)
-MENU_ITEM_PADDING = ft.padding.symmetric(horizontal=20, vertical=12)
-SIGN_OUT_PADDING = ft.padding.symmetric(horizontal=20, vertical=20)
+HEADER_VERTICAL_PADDING = ft.Padding.symmetric(vertical=20)
+MENU_ITEM_PADDING = ft.Padding.symmetric(horizontal=20, vertical=12)
+SIGN_OUT_PADDING = ft.Padding.symmetric(horizontal=20, vertical=20)
 
 # COLOR PALETTE
 SIDEBAR_BG = "#FFFFFF"

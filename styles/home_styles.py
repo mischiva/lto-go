@@ -5,7 +5,7 @@ import flet as ft
 
 PAGE_BGCOLOR = "white"
 PAGE_PADDING = 0
-PAGE_CONTENT_PADDING = ft.padding.symmetric(horizontal=40, vertical=30)
+PAGE_CONTENT_PADDING = ft.Padding.symmetric(horizontal=40, vertical=30)
 
 ROW_SPACING = 16
 HEADER_GAP = 20
@@ -16,7 +16,7 @@ CARD_HEIGHT = 180
 CARD_RADIUS = 14
 
 CARD_TEXT_SPACING = 4
-CARD_TEXT_PADDING = ft.padding.all(16)
+CARD_TEXT_PADDING = ft.Padding.all(16)
 
 # COLOR PALETTE
 COLOR_BLACK = "#000000"

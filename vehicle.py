@@ -1,6 +1,8 @@
 # bringing in flet and our navigation tools so we can build out the vehicle management screen
 # we import all our custom styles from the vehicle_styles file to keep the code clean
 import flet as ft
+import vehicle_db
+import db
 from sidebar import build_sidebar, toggle_sidebar
 from styles.fonts import GOOGLE_FONTS
 from styles.vehicle_styles import (
@@ -89,7 +91,7 @@ def main(page: ft.Page, sidebar_open=False):
             border_color=COLOR_BORDER,
             focused_border_color=COLOR_PRIMARY,
             border_radius=12,
-            content_padding=ft.padding.symmetric(horizontal=14, vertical=0),
+            content_padding=ft.Padding.symmetric(horizontal=14, vertical=0),
         )
 
     def dropdown_input(options: list[str]) -> ft.Dropdown:
@@ -109,7 +111,7 @@ def main(page: ft.Page, sidebar_open=False):
             border_color=COLOR_BORDER,
             focused_border_color=COLOR_PRIMARY,
             border_radius=12,
-            content_padding=ft.padding.symmetric(horizontal=14, vertical=8),
+            content_padding=ft.Padding.symmetric(horizontal=14, vertical=8),
             text_size=14,
             menu_height=220,
             dense=True,
@@ -117,17 +119,26 @@ def main(page: ft.Page, sidebar_open=False):
 
     def labeled_field(label: str, control: ft.Control, col: int = 6) -> ft.Container:
         # adding labels on top of our inputs and placing them in our responsive grid
+        controls = [ft.Text(label, style=LABEL_STYLE), control]
+        # if the control has an attached error Text control, add it below the input
+        err = getattr(control, "error", None)
+        if err is not None:
+            controls.append(err)
+
         return ft.Container(
             col={"xs": 12, "md": col},
             content=ft.Column(
-                controls=[
-                    ft.Text(label, style=LABEL_STYLE),
-                    control,
-                ],
+                controls=controls,
                 spacing=6,
                 tight=True,
             ),
         )
+
+    def filterVehicles(e=None):
+        search = search_input.value or ""
+        v_type = type_dropdown.value or ""
+        current_page["value"] = 1
+        loadTable(search, v_type, 1, items_per_page["value"])
 
     # initializing the sidebar and setting this screen as active
     sidebar = build_sidebar(page, on_menu_item_click, current_screen="Vehicle", is_open=sidebar_open)
@@ -155,6 +166,7 @@ def main(page: ft.Page, sidebar_open=False):
             hide_edit_form()
             return
         show_add_form()
+        addForm()
 
     def show_edit_form(e=None):
         # using the same form box but switching labels for edit mode
@@ -163,9 +175,31 @@ def main(page: ft.Page, sidebar_open=False):
         form_box.visible = True
         page.update()
 
+    def addForm(e=None):
+        editingPlateNo["value"] = None
+        fPlateNo.value = ""
+        fEngineNo.value = ""
+        fChassisNo.value = ""
+        fVehicleType.value = "Private car"
+        fMake.value = ""
+        fModel.value = ""
+        fYear.value = ""
+        fColor.value = ""
+        updateOwnerDropdown()
+        form_title.value = "Add vehicle"
+        primary_action_label.value = "Save"
+        form_box.visible = True
+        page.update()
+
     def hide_edit_form(e=None):
         form_box.visible = False
         page.update()
+
+    search_input = text_input("Search by plate or engine no.")
+    search_input.prefix_icon = ft.Icons.SEARCH
+    
+    type_dropdown = dropdown_input(["All types", "Private car", "Motorcycle", "PUV"])
+
     # the row containing our global search and filtering tools for the vehicle table
     filters_row = ft.ResponsiveRow(
         columns=12,
@@ -173,38 +207,11 @@ def main(page: ft.Page, sidebar_open=False):
         controls=[
             ft.Container(
                 col={"xs": 12, "md": 4},
-                content=ft.TextField(
-                    hint_text="Search by plate or engine no.",
-                    prefix_icon=ft.Icons.SEARCH,
-                    height=46,
-                    color=COLOR_TEXT_PRIMARY,
-                    text_style=ft.TextStyle(
-                        font_family="Lato",
-                        size=14,
-                        weight=ft.FontWeight.W_500,
-                        color=COLOR_TEXT_PRIMARY,
-                    ),
-                    hint_style=ft.TextStyle(
-                        font_family="Lato",
-                        size=14,
-                        color=COLOR_TEXT_HINT,
-                    ),
-                    filled=True,
-                    fill_color=COLOR_FIELD_FILL,
-                    border_color=COLOR_BORDER,
-                    focused_border_color=COLOR_PRIMARY,
-                    border_radius=12,
-                    content_padding=ft.padding.symmetric(horizontal=14, vertical=0),
-                ),
+                content=search_input,
             ),
             ft.Container(
                 col={"xs": 12, "md": 2},
-                content=dropdown_input([
-                    "All types",
-                    "Private car",
-                    "Motorcycle",
-                    "PUV",
-                ]),
+                content=type_dropdown,
             ),
             ft.Container(col={"xs": 0, "md": 3}),
             ft.Container(
@@ -229,7 +236,7 @@ def main(page: ft.Page, sidebar_open=False):
                     style=BLUE_BUTTON_STYLE,
                     height=46,
                     width=float("inf"),
-                    on_click=lambda e: None,
+                    on_click=filterVehicles,
                 ),
             ),
             ft.Container(
@@ -253,74 +260,42 @@ def main(page: ft.Page, sidebar_open=False):
         ],
     )
 
-    sample_vehicle_data = [
-        # dummy records for building the table and pagination logic
-        {"plate_no": "ABC 1234", "make_model": "Toyota Vios", "year": "2020", "type": "Private car", "owner": "Juan Dela Cruz"},
-        {"plate_no": "XYZ 5678", "make_model": "Honda Civic", "year": "2019", "type": "Private car", "owner": "Maria Santos"},
-        {"plate_no": "DEF 9012", "make_model": "Ford Ranger", "year": "2021", "type": "Pickup truck", "owner": "Pedro Reyes"},
-        {"plate_no": "GHI 3456", "make_model": "Mitsubishi Montero", "year": "2018", "type": "SUV", "owner": "Ana Garcia"},
-        {"plate_no": "JKL 7890", "make_model": "Hyundai Tucson", "year": "2022", "type": "SUV", "owner": "Carlos Mendoza"},
-        {"plate_no": "MNO 1357", "make_model": "Nissan Navara", "year": "2020", "type": "Pickup truck", "owner": "Rosa Lim"},
-        {"plate_no": "PQR 2468", "make_model": "Toyota Fortuner", "year": "2019", "type": "SUV", "owner": "Miguel Torres"},
-        {"plate_no": "STU 3690", "make_model": "Honda CR-V", "year": "2021", "type": "SUV", "owner": "Elena Cruz"},
-        {"plate_no": "VWX 4812", "make_model": "Ford Everest", "year": "2017", "type": "SUV", "owner": "Roberto Diaz"},
-        {"plate_no": "YZA 5924", "make_model": "Mitsubishi Strada", "year": "2018", "type": "Pickup truck", "owner": "Lourdes Ramos"},
-        {"plate_no": "BCD 6035", "make_model": "Toyota Hilux", "year": "2022", "type": "Pickup truck", "owner": "Fernando Reyes"},
-        {"plate_no": "EFG 7146", "make_model": "Honda City", "year": "2020", "type": "Sedan", "owner": "Carmen Flores"},
-        {"plate_no": "HIJ 8257", "make_model": "Nissan Patrol", "year": "2016", "type": "SUV", "owner": "Antonio Valdez"},
-        {"plate_no": "KLM 9368", "make_model": "Hyundai Santa Fe", "year": "2019", "type": "SUV", "owner": "Gloria Santos"},
-        {"plate_no": "NOP 0479", "make_model": "Ford Focus", "year": "2018", "type": "Sedan", "owner": "Ricardo Moreno"},
-    ]
-
     # pagination trackers for the data list
     current_page = {"value": 1}
     items_per_page = {"value": 10}
-    total_items = {"value": len(sample_vehicle_data)}
-    all_rows_data = sample_vehicle_data.copy()
-    def loadTable(page=1, per_page=10):
+    total_items = {"value": 0}
+
+    def loadTable(search="", v_type="", page=1, per_page=10):
         # picking which vehicle rows to show based on our page index
-        sample_vehicles = [
-            # local list for our demo pagination
-            {"plate_no": "ABC 1234", "make_model": "Toyota Vios", "year": "2020", "type": "Private car", "owner": "Juan Dela Cruz"},
-            {"plate_no": "XYZ 5678", "make_model": "Honda Civic", "year": "2019", "type": "Private car", "owner": "Maria Santos"},
-            {"plate_no": "DEF 9012", "make_model": "Ford Ranger", "year": "2021", "type": "Pickup truck", "owner": "Pedro Reyes"},
-            {"plate_no": "GHI 3456", "make_model": "Mitsubishi Montero", "year": "2018", "type": "SUV", "owner": "Ana Garcia"},
-            {"plate_no": "JKL 7890", "make_model": "Hyundai Tucson", "year": "2022", "type": "SUV", "owner": "Carlos Mendoza"},
-            {"plate_no": "MNO 1357", "make_model": "Nissan Navara", "year": "2020", "type": "Pickup truck", "owner": "Rosa Flores"},
-            {"plate_no": "PQR 2468", "make_model": "Toyota Fortuner", "year": "2019", "type": "SUV", "owner": "Miguel Torres"},
-            {"plate_no": "STU 3690", "make_model": "Honda CR-V", "year": "2021", "type": "SUV", "owner": "Elena Castillo"},
-            {"plate_no": "VWX 4826", "make_model": "Ford Everest", "year": "2020", "type": "SUV", "owner": "Roberto Silva"},
-            {"plate_no": "YZA 5173", "make_model": "Mitsubishi Strada", "year": "2018", "type": "Pickup truck", "owner": "Lourdes Rivera"},
-            {"plate_no": "BCD 6249", "make_model": "Toyota Hilux", "year": "2022", "type": "Pickup truck", "owner": "Fernando Lopez"},
-            {"plate_no": "EFG 7381", "make_model": "Nissan Patrol", "year": "2019", "type": "SUV", "owner": "Carmen Morales"},
-        ]
-        total_items["value"] = len(sample_vehicles)
+        all_matching = vehicle_db.getVehicles(search, v_type)
+        total_items["value"] = len(all_matching)
         # math to get the start and end of our data slice
         start_idx = (page - 1) * per_page
-        end_idx = min(start_idx + per_page, len(sample_vehicles))
-        page_rows = sample_vehicles[start_idx:end_idx]
+        end_idx = min(start_idx + per_page, len(all_matching))
+        page_rows = all_matching[start_idx:end_idx]
         # repopulating the table with our selected data
         table.rows.clear()
         for vehicle in page_rows:
             table.rows.append(
                 ft.DataRow(cells=[
                     ft.DataCell(ft.Text(vehicle["plate_no"], style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(vehicle.get("engine_no", ""), style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(vehicle.get("chassis_no", ""), style=TABLE_DATA_STYLE)),
                     ft.DataCell(ft.Text(vehicle["make_model"], style=TABLE_DATA_STYLE)),
-                    ft.DataCell(ft.Text(vehicle["year"], style=TABLE_DATA_STYLE)),
+                    ft.DataCell(ft.Text(str(vehicle["year"]), style=TABLE_DATA_STYLE)),
                     ft.DataCell(ft.Text(vehicle["type"], style=TABLE_DATA_STYLE)),
                     ft.DataCell(ft.Text(vehicle["owner"], style=TABLE_DATA_STYLE)),
                     ft.DataCell(
                         ft.Row(controls=[
                             ft.Button(
                                 content=ft.Text("Edit", color="white", size=12, weight=ft.FontWeight.W_700),
-                                on_click=show_edit_form,
+                                on_click=lambda e, p=vehicle["plate_no"]: editVehicle(p),
                                 style=BLUE_BUTTON_STYLE,
                                 height=32,
                             ),
                             ft.Button(
                                 content=ft.Text("Delete", color="white", size=12, weight=ft.FontWeight.W_700),
-                                # delete logic currently a placeholder for the user to implement
-                                on_click=lambda e: None,
+                                on_click=lambda e, p=vehicle["plate_no"]: deleteVehicle(p),
                                 style=DANGER_BUTTON_STYLE,
                                 height=32,
                             ),
@@ -379,13 +354,171 @@ def main(page: ft.Page, sidebar_open=False):
     def go_to_page(page_num):
         # when a specific page button is clicked we reload the table with that index
         current_page["value"] = page_num
-        loadTable(page_num, items_per_page["value"])
+        loadTable(search_input.value, type_dropdown.value, page_num, items_per_page["value"])
 
     def change_items_per_page(e):
         # user changed the page size so we reset back to page 1 to avoid showing an empty index
         items_per_page["value"] = int(e.control.value)
         current_page["value"] = 1  # Reset to first page
-        loadTable(1, items_per_page["value"])
+        loadTable(search_input.value, type_dropdown.value, 1, items_per_page["value"])
+
+    def getFormData():
+        return {
+            "plate_no": fPlateNo.value or "",
+            "engine_no": fEngineNo.value or "",
+            "chassis_no": fChassisNo.value or "",
+            "vehicle_type": fVehicleType.value or "",
+            "make": fMake.value or "",
+            "model": fModel.value or "",
+            "year": fYear.value or "",
+            "color": fColor.value or "",
+            "owner_id": fOwner.value or "",
+        }
+
+    # use shared show_dialog(page, title, message)
+
+    def saveDetails(e):
+        try:
+            data = getFormData()
+            print("saveDetails called", data)
+
+            # basic client-side validation
+            errors: list[str] = []
+            if not data["plate_no"].strip():
+                errors.append("Plate number is required.")
+            if not data["engine_no"].strip():
+                errors.append("Engine number is required.")
+            if not data["chassis_no"].strip():
+                errors.append("Chassis number is required.")
+            if not data["make"].strip():
+                errors.append("Make is required.")
+            if not data["model"].strip():
+                errors.append("Model is required.")
+            if not data["owner_id"].strip():
+                errors.append("Registered owner is required.")
+
+            # validate year is an integer and plausible
+            year_val = 0
+            if data["year"] != "":
+                try:
+                    year_val = int(data["year"])
+                    if year_val <= 0 or year_val > 9999:
+                        errors.append("Year must be a positive integer.")
+                except Exception:
+                    errors.append("Year must be a number.")
+            else:
+                errors.append("Year is required.")
+
+            # clear previous error messages
+            for c in (fPlateNo, fEngineNo, fChassisNo, fMake, fModel, fYear, fOwner):
+                try:
+                    if getattr(c, "error", None) is not None:
+                        c.error.value = ""
+                except Exception:
+                    pass
+
+            if errors:
+                # set inline error messages for the first failing fields
+                if not data["plate_no"].strip():
+                    fPlateNo.error.value = "Plate number is required."
+                if not data["engine_no"].strip():
+                    fEngineNo.error.value = "Engine number is required."
+                if not data["chassis_no"].strip():
+                    fChassisNo.error.value = "Chassis number is required."
+                if not data["make"].strip():
+                    fMake.error.value = "Make is required."
+                if not data["model"].strip():
+                    fModel.error.value = "Model is required."
+                if not data["owner_id"].strip():
+                    fOwner.error.value = "Registered owner is required."
+                if data["year"] == "":
+                    fYear.error.value = "Year is required."
+                page.update()
+                return
+
+            # normalize the year value before saving
+            data["year"] = year_val
+
+            # duplicate checks
+            existing = vehicle_db.getVehicle(data["plate_no"]) if data["plate_no"] else None
+            if editingPlateNo["value"]:
+                # if changing plate no to another existing plate -> error
+                if data["plate_no"] != editingPlateNo["value"] and existing:
+                    fPlateNo.error.value = "A vehicle with that plate number already exists."
+                    page.update()
+                    return
+            else:
+                if existing:
+                    fPlateNo.error.value = "A vehicle with that plate number already exists."
+                    page.update()
+                    return
+
+            try:
+                if editingPlateNo["value"]:
+                    vehicle_db.updateVehicle(editingPlateNo["value"], data)
+                else:
+                    vehicle_db.addVehicle(data)
+                hide_edit_form()
+                loadTable(search_input.value, type_dropdown.value, current_page["value"], items_per_page["value"])
+                page.snack_bar = ft.SnackBar(ft.Text("Vehicle saved successfully."))
+                page.snack_bar.open = True
+                page.update()
+            except Exception as ex:
+                # show friendly error to user and log to console
+                page.snack_bar = ft.SnackBar(ft.Text(str(ex)))
+                page.snack_bar.open = True
+                page.update()
+                print("DB error:", ex)
+        except Exception as ex:
+            print("saveDetails unexpected error:", ex)
+            page.snack_bar = ft.SnackBar(ft.Text(str(ex)))
+            page.snack_bar.open = True
+            page.update()
+
+    def editVehicle(plate_no):
+        row = vehicle_db.getVehicle(plate_no)
+        if not row: return
+        editingPlateNo["value"] = plate_no
+        fPlateNo.value = row["plate_no"]
+        fEngineNo.value = row["engine_no"]
+        fChassisNo.value = row["chassis_no"]
+        fVehicleType.value = row["vehicle_type"]
+        fMake.value = row["make"]
+        fModel.value = row["model"]
+        fYear.value = str(row["year"])
+        fColor.value = row["color"]
+        updateOwnerDropdown()
+        fOwner.value = row["owner_id"]
+        show_edit_form()
+
+    def deleteVehicle(plate_no):
+        vehicle_db.deleteVehicle(plate_no)
+        loadTable(search_input.value, type_dropdown.value, current_page["value"], items_per_page["value"])
+
+    def updateOwnerDropdown():
+        drivers = db.getDrivers()
+        fOwner.options = [ft.DropdownOption(key=d["license_no"], text=f"{d['full_name']} ({d['license_no']})") for d in drivers]
+        if drivers:
+            fOwner.value = drivers[0]["license_no"]
+        fOwner.update()
+
+    fPlateNo = text_input("e.g. ABC 1234")
+    fPlateNo.error = ft.Text("", color="red", size=12)
+    fEngineNo = text_input("")
+    fEngineNo.error = ft.Text("", color="red", size=12)
+    fChassisNo = text_input("")
+    fChassisNo.error = ft.Text("", color="red", size=12)
+    fVehicleType = dropdown_input(["Motorcycle", "Private car", "PUV"])
+    fMake = text_input("e.g. Toyota")
+    fMake.error = ft.Text("", color="red", size=12)
+    fModel = text_input("e.g. Vios")
+    fModel.error = ft.Text("", color="red", size=12)
+    fYear = text_input("e.g. 2020")
+    fYear.error = ft.Text("", color="red", size=12)
+    fColor = text_input("e.g. White")
+    fOwner = dropdown_input([])
+    fOwner.error = ft.Text("", color="red", size=12)
+    editingPlateNo = {"value": None}
 
     def go_to_previous_page(e):
         # simple decrement of the page counter
@@ -411,6 +544,8 @@ def main(page: ft.Page, sidebar_open=False):
         data_text_style=TABLE_DATA_STYLE,
         columns=[
             ft.DataColumn(label=ft.Text("Plate no.", style=TABLE_HEADER_STYLE)),
+            ft.DataColumn(label=ft.Text("Engine no.", style=TABLE_HEADER_STYLE)),
+            ft.DataColumn(label=ft.Text("Chassis no.", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Make / model", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Year", style=TABLE_HEADER_STYLE)),
             ft.DataColumn(label=ft.Text("Type", style=TABLE_HEADER_STYLE)),
@@ -433,7 +568,7 @@ def main(page: ft.Page, sidebar_open=False):
         height=40,
         text_size=12,
         on_select=change_items_per_page,
-        content_padding=ft.padding.symmetric(horizontal=8, vertical=0),
+        content_padding=ft.Padding.symmetric(horizontal=8, vertical=0),
     )
 
     # back button icon
@@ -477,7 +612,7 @@ def main(page: ft.Page, sidebar_open=False):
             alignment=ft.MainAxisAlignment.SPACE_BETWEEN,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         ),
-        padding=ft.padding.symmetric(horizontal=16, vertical=12),
+        padding=ft.Padding.symmetric(horizontal=16, vertical=12),
         border=ft.border.all(1, COLOR_BORDER),
         border_radius=8,
         bgcolor="#f8f9fa",
@@ -513,7 +648,7 @@ def main(page: ft.Page, sidebar_open=False):
             ],
             spacing=10,
         ),
-        padding=ft.padding.all(16),
+        padding=ft.Padding.all(16),
         border=ft.border.all(1, COLOR_BORDER),
         border_radius=14,
         bgcolor="white",
@@ -551,15 +686,15 @@ def main(page: ft.Page, sidebar_open=False):
                     columns=12,
                     run_spacing=10,
                     controls=[
-                        labeled_field("Plate number", text_input("e.g. ABC 1234"), col=4),
-                        labeled_field("Engine number", text_input(""), col=4),
-                        labeled_field("Chassis number", text_input(""), col=4),
-                        labeled_field("Vehicle type", dropdown_input(["Motorcycle", "Private car", "PUV"]), col=4),
-                        labeled_field("Make", text_input("e.g. Toyota"), col=4),
-                        labeled_field("Model", text_input("e.g. Vios"), col=4),
-                        labeled_field("Year", text_input("e.g. 2020"), col=4),
-                        labeled_field("Color", text_input("e.g. White"), col=4),
-                        labeled_field("Registered owner", dropdown_input(["Juan Dela Cruz", "Ana Lim", "Pedro Reyes"]), col=4),
+                        labeled_field("Plate number", fPlateNo, col=4),
+                        labeled_field("Engine number", fEngineNo, col=4),
+                        labeled_field("Chassis number", fChassisNo, col=4),
+                        labeled_field("Vehicle type", fVehicleType, col=4),
+                        labeled_field("Make", fMake, col=4),
+                        labeled_field("Model", fModel, col=4),
+                        labeled_field("Year", fYear, col=4),
+                        labeled_field("Color", fColor, col=4),
+                        labeled_field("Registered owner", fOwner, col=4),
                     ],
                 ),
                 ft.Row(
@@ -567,12 +702,12 @@ def main(page: ft.Page, sidebar_open=False):
                         ft.Button(
                             content=primary_action_label,
                             style=BLUE_BUTTON_STYLE,
-                            on_click=lambda e: None,
+                            on_click=saveDetails,
                         ),
                         ft.Button(
                             content=ft.Text("Delete", color="white", weight=ft.FontWeight.W_700),
                             style=DANGER_BUTTON_STYLE,
-                            on_click=lambda e: None,
+                            on_click=lambda e: deleteVehicle(editingPlateNo["value"]),
                         ),
                         ft.Button(
                             content=ft.Text("Cancel", color="#1f2937", weight=ft.FontWeight.W_700),
@@ -589,7 +724,7 @@ def main(page: ft.Page, sidebar_open=False):
             ],
             spacing=12,
         ),
-        padding=ft.padding.all(16),
+        padding=ft.Padding.all(16),
         border=ft.border.all(1, COLOR_BORDER),
         border_radius=14,
         bgcolor="white",
@@ -609,7 +744,7 @@ def main(page: ft.Page, sidebar_open=False):
             spacing=16,
             expand=True,
         ),
-        padding=ft.padding.symmetric(horizontal=40, vertical=30),
+        padding=ft.Padding.symmetric(horizontal=40, vertical=30),
         expand=True,
     )
     # stacking the sidebar over our main content
@@ -624,4 +759,4 @@ def main(page: ft.Page, sidebar_open=False):
     )
 
     # trigger the table load once the screen mounts
-    loadTable(1, 10)
+    loadTable(page=1, per_page=10)

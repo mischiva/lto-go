@@ -1,5 +1,0 @@
-postgresql
-
-pyscopg2-binary 
-
-pip install py keme
