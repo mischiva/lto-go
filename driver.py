@@ -21,10 +21,6 @@ from styles.driver_styles import (
     DANGER_BUTTON_STYLE,
 )
 
-from dbconnect import read_table, insert_into_table
-# read_table(table_name)
-# insert_into_table(table_name, data)
-
 def main(page: ft.Page, sidebar_open=False):
     # setting up the base page with white background and zero padding so our layout controls the space
     page.bgcolor = "white"
