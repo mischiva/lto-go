@@ -2,7 +2,10 @@
 import datetime
 # standard flet import
 import flet as ft
-# getting our sidebar and styling tools
+# getting our database and navigation modules
+import violation_db
+import db
+import vehicle_db
 from sidebar import build_sidebar, toggle_sidebar
 from styles.fonts import GOOGLE_FONTS
 from styles import violation_styles as s
@@ -124,12 +127,14 @@ def main(page: ft.Page, sidebar_open=False):
         # pairing a locked text input with a calendar icon
         date_field = text_input(hint_text)
         date_field.read_only = True
+        error_text = ft.Text("", size=11, color="#B42318")
+
         def open_picker(e):
             # linking the picker to this field before showing the dialog
             active_date_field["target"] = date_field
             page.show_dialog(date_picker)
 
-        return ft.Row(
+        row = ft.Row(
             controls=[
                 ft.Container(content=date_field, expand=True),
                 ft.IconButton(
@@ -142,16 +147,21 @@ def main(page: ft.Page, sidebar_open=False):
             spacing=4,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
+        row.error = error_text
+        row.date_field = date_field
+        return row
 
     def labeled_field(label: str, control: ft.Control, col: int = 6) -> ft.Container:
         # adding labels on top of form inputs for better readability
+        controls = [ft.Text(label, style=s.LABEL_STYLE), control]
+        err = getattr(control, "error", None)
+        if err is not None:
+            controls.append(err)
+
         return ft.Container(
             col={"xs": 12, "md": col},
             content=ft.Column(
-                controls=[
-                    ft.Text(label, style=s.LABEL_STYLE),
-                    control,
-                ],
+                controls=controls,
                 spacing=6,
                 tight=True,
             ),
@@ -162,7 +172,7 @@ def main(page: ft.Page, sidebar_open=False):
 
     # the hamburger icon for toggling the sidebar
     menu_button = ft.IconButton(
-        icon=ft.icons.Icons.MENU,
+        icon=ft.Icons.MENU,
         icon_size=28,
         icon_color=ft.Colors.BLACK,
         on_click=lambda e: (toggle_sidebar(sidebar), page.update()),
@@ -171,8 +181,81 @@ def main(page: ft.Page, sidebar_open=False):
     form_title = ft.Text("Add violation", style=s.SECTION_TITLE_STYLE)
     primary_action_label = ft.Text("Save", color="white", weight=ft.FontWeight.W_700)
 
+    # State variables
+    current_page = {"value": 1}
+    items_per_page = {"value": 10}
+    total_items = {"value": 0}
+    all_rows_data = []
+    editingTvId = {"value": None}
+
+    def error_text():
+        return ft.Text("", size=11, color="#B42318")
+
+    fTvId = text_input("e.g. V-2025-001")
+    fTvId.error = error_text()
+    fLicenseNo = text_input("e.g. U51-97-877565")
+    fLicenseNo.error = error_text()
+    fPlateNo = text_input("e.g. ABC 1234")
+    fPlateNo.error = error_text()
+    fTvType = text_input("e.g. Overspeeding")
+    fTvType.error = error_text()
+    fTvDate = date_input("mm/dd/yyyy")
+    fStreet = text_input("e.g. National Highway")
+    fStreet.error = error_text()
+    fBarangay = text_input("e.g. Real")
+    fBarangay.error = error_text()
+    fCity = text_input("e.g. Calamba")
+    fCity.error = error_text()
+    fRegion = text_input("e.g. Region IV-A")
+    fRegion.error = error_text()
+    fTvFine = text_input("e.g. 2000")
+    fTvFine.error = error_text()
+    fAppOfficer = text_input("e.g. Officer Ramos")
+    fAppOfficer.error = error_text()
+    fTvStatus = dropdown_input(["Unpaid", "Paid", "Contested"])
+    fTvStatus.error = error_text()
+
+    search_input = text_input("Search by driver or plate")
+    search_input.prefix_icon = ft.Icons.SEARCH
+    
+    type_dropdown = dropdown_input([
+        "All types",
+        "Overspeeding",
+        "Reckless driving",
+        "No seatbelt",
+    ])
+    
+    status_dropdown = dropdown_input([
+        "All statuses",
+        "Unpaid",
+        "Paid",
+        "Contested",
+    ])
+
+    def clear_errors():
+        for control in (fTvId, fLicenseNo, fPlateNo, fTvType, fTvDate, fStreet, fBarangay, fCity, fRegion, fTvFine, fAppOfficer, fTvStatus):
+            if getattr(control, "error", None) is not None:
+                control.error.value = ""
+
+    def reset_form_values():
+        editingTvId["value"] = None
+        fTvId.value = ""
+        fTvId.read_only = False
+        fLicenseNo.value = ""
+        fPlateNo.value = ""
+        fTvType.value = ""
+        fTvDate.date_field.value = ""
+        fStreet.value = ""
+        fBarangay.value = ""
+        fCity.value = ""
+        fRegion.value = ""
+        fTvFine.value = ""
+        fAppOfficer.value = ""
+        fTvStatus.value = "Unpaid"
+        clear_errors()
+
     def show_add_form(e=None):
-        # opening the form for a new entry
+        reset_form_values()
         form_title.value = "Add violation"
         primary_action_label.value = "Save"
         form_box.visible = True
@@ -184,17 +267,44 @@ def main(page: ft.Page, sidebar_open=False):
             return
         show_add_form()
 
-    def show_edit_form(e=None):
-        # updating labels and showing the form for editing
+    def show_edit_form(tv_id):
+        row = violation_db.getViolation(tv_id)
+        if not row:
+            page.snack_bar = ft.SnackBar(ft.Text("Violation not found."))
+            page.snack_bar.open = True
+            page.update()
+            return
+
+        editingTvId["value"] = tv_id
+        clear_errors()
+        fTvId.value = row["tv_id"]
+        fTvId.read_only = True
+        fLicenseNo.value = row["license_no"] or ""
+        fPlateNo.value = row["plate_no"] or ""
+        fTvType.value = row["tv_type"]
+        fTvDate.date_field.value = format_date_value(row["tv_date"])
+
+        fStreet.value = row.get("tv_street") or ""
+        fBarangay.value = row.get("tv_barangay") or ""
+        fCity.value = row.get("tv_city") or ""
+        fRegion.value = row.get("tv_region") or ""
+
+        fTvFine.value = str(row["tv_fine"])
+        fAppOfficer.value = row["app_officer"] or ""
+        fTvStatus.value = row["tv_status"]
+
         form_title.value = "Edit violation"
-        primary_action_label.value = "Save"
+        primary_action_label.value = "Update"
         form_box.visible = True
         page.update()
 
     def hide_form(e=None):
-        # hiding the form and updating ui
         form_box.visible = False
         page.update()
+
+    def filter_violations(e=None):
+        current_page["value"] = 1
+        loadTable(1, items_per_page["value"])
 
     # Row containing global search and status filters
     filters_row = ft.ResponsiveRow(
@@ -203,53 +313,20 @@ def main(page: ft.Page, sidebar_open=False):
         controls=[
             ft.Container(
                 col={"xs": 12, "md": 4},
-                content=ft.TextField(
-                    hint_text="Search by driver or plate",
-                    prefix_icon=ft.Icons.SEARCH,
-                    height=46,
-                    color=s.COLOR_TEXT_PRIMARY,
-                    text_style=ft.TextStyle(
-                        font_family="Lato",
-                        size=14,
-                        weight=ft.FontWeight.W_500,
-                        color=s.COLOR_TEXT_PRIMARY,
-                    ),
-                    hint_style=ft.TextStyle(
-                        font_family="Lato",
-                        size=14,
-                        color=s.COLOR_TEXT_HINT,
-                    ),
-                    filled=True,
-                    fill_color=s.COLOR_FIELD_FILL,
-                    border_color=s.COLOR_BORDER,
-                    focused_border_color=s.COLOR_PRIMARY,
-                    border_radius=12,
-                    content_padding=ft.Padding.symmetric(horizontal=14, vertical=0),
-                ),
+                content=search_input,
             ),
             ft.Container(
                 col={"xs": 12, "md": 2},
-                content=dropdown_input([
-                    "All types",
-                    "Overspeeding",
-                    "Reckless driving",
-                    "No seatbelt",
-                ]),
+                content=type_dropdown,
             ),
             ft.Container(
                 col={"xs": 12, "md": 2},
-                content=dropdown_input([
-                    "All statuses",
-                    "Unpaid",
-                    "Paid",
-                    "Contested",
-                ]),
+                content=status_dropdown,
             ),
             ft.Container(col={"xs": 0, "md": 1}),
             ft.Container(
                 col={"xs": 6, "md": 1},
                 content=ft.Button(
-                    # FILTER BUTTON
                     content=ft.Row(
                         controls=[
                             ft.Icon(ft.Icons.FILTER_ALT, color="white", size=16),
@@ -269,7 +346,7 @@ def main(page: ft.Page, sidebar_open=False):
                     style=s.BLUE_BUTTON_STYLE,
                     height=46,
                     width=float("inf"),
-                    on_click=lambda e: None,
+                    on_click=filter_violations,
                 ),
             ),
             ft.Container(
@@ -292,28 +369,6 @@ def main(page: ft.Page, sidebar_open=False):
             ),
         ],
     )
-
-    sample_violation_data = [
-        # temporary list for building the table and pagination logic
-        {"driver": "Juan Dela Cruz", "plate_no": "ABC 1234", "type": "Overspeeding", "date": "2025-06-10", "location": "Calamba, Laguna", "fine": "2,000", "status": "Unpaid"},
-        {"driver": "Maria Santos", "plate_no": "XYZ 5678", "type": "Reckless driving", "date": "2025-05-12", "location": "San Pablo, Laguna", "fine": "1,500", "status": "Paid"},
-        {"driver": "Pedro Reyes", "plate_no": "DEF 9012", "type": "No seatbelt", "date": "2025-04-22", "location": "Sta. Rosa, Laguna", "fine": "500", "status": "Contested"},
-        {"driver": "Ana Garcia", "plate_no": "GHI 3456", "type": "Overspeeding", "date": "2025-03-10", "location": "Binan, Laguna", "fine": "2,000", "status": "Paid"},
-        {"driver": "Carlos Mendoza", "plate_no": "JKL 7890", "type": "Reckless driving", "date": "2025-02-14", "location": "Cabuyao, Laguna", "fine": "1,500", "status": "Unpaid"},
-        {"driver": "Rosa Lim", "plate_no": "MNO 1357", "type": "No seatbelt", "date": "2025-01-18", "location": "Los Banos, Laguna", "fine": "500", "status": "Paid"},
-        {"driver": "Miguel Torres", "plate_no": "PQR 2468", "type": "Overspeeding", "date": "2024-12-02", "location": "Calamba, Laguna", "fine": "2,000", "status": "Contested"},
-        {"driver": "Elena Cruz", "plate_no": "STU 3690", "type": "Reckless driving", "date": "2024-11-07", "location": "San Pedro, Laguna", "fine": "1,500", "status": "Paid"},
-        {"driver": "Roberto Diaz", "plate_no": "VWX 4812", "type": "No seatbelt", "date": "2024-10-25", "location": "Ibaan, Batangas", "fine": "500", "status": "Unpaid"},
-        {"driver": "Lourdes Ramos", "plate_no": "YZA 5924", "type": "Overspeeding", "date": "2024-09-11", "location": "San Pablo, Laguna", "fine": "2,000", "status": "Paid"},
-        {"driver": "Fernando Reyes", "plate_no": "BCD 6035", "type": "Reckless driving", "date": "2024-08-03", "location": "Sta. Rosa, Laguna", "fine": "1,500", "status": "Contested"},
-        {"driver": "Carmen Flores", "plate_no": "EFG 7146", "type": "No seatbelt", "date": "2024-07-19", "location": "Biñan, Laguna", "fine": "500", "status": "Paid"},
-    ]
-
-    # state trackers for our list pagination
-    current_page = {"value": 1}
-    items_per_page = {"value": 10}
-    total_items = {"value": len(sample_violation_data)}
-    all_rows_data = sample_violation_data.copy()
 
     # defining the structure and look of our data table
     table = ft.DataTable(
@@ -339,45 +394,93 @@ def main(page: ft.Page, sidebar_open=False):
         rows=[],
     )
 
-    def loadTable(page=1, per_page=10):
-        # picking which slice of data to show based on the page index
-        total_items["value"] = len(all_rows_data)
-        start_idx = (page - 1) * per_page
-        end_idx = min(start_idx + per_page, len(all_rows_data))
-        page_rows = all_rows_data[start_idx:end_idx]
-        # clearing the table and repopulating with the new slice
+    def format_date_value(value):
+        if not value:
+            return ""
+        if isinstance(value, str):
+            try:
+                return datetime.datetime.strptime(value, "%Y-%m-%d").strftime("%m/%d/%Y")
+            except Exception:
+                return value
+        return value.strftime("%m/%d/%Y")
+
+    def loadTable(page_num=1, per_page=10):
+        search = search_input.value or ""
+        v_type = type_dropdown.value or ""
+        v_status = status_dropdown.value or ""
+
+        try:
+            violations = violation_db.getViolations(search, v_type, v_status)
+        except Exception as exc:
+            print("loadTable error:", exc)
+            violations = []
+            page.snack_bar = ft.SnackBar(ft.Text(f"Database error: {exc}"))
+            page.snack_bar.open = True
+            page.update()
+            return
+
+        total_items["value"] = len(violations)
+        start_idx = (page_num - 1) * per_page
+        end_idx = min(start_idx + per_page, len(violations))
+        page_rows = violations[start_idx:end_idx]
+
         table.rows.clear()
         for row in page_rows:
+            # Combine address parts nicely for display in table
+            street = row.get("tv_street") or ""
+            barangay = row.get("tv_barangay") or ""
+            city = row.get("tv_city") or ""
+            region = row.get("tv_region") or ""
+
+            loc_parts = []
+            if street and street != "N/A":
+                loc_parts.append(street)
+            if barangay and barangay != "N/A":
+                loc_parts.append(barangay)
+            if city and city != "N/A":
+                loc_parts.append(city)
+            if region and region != "N/A":
+                loc_parts.append(region)
+            location_str = ", ".join(loc_parts) if loc_parts else "N/A"
+
+            fine_val = row["tv_fine"]
+            try:
+                fine_str = f"{fine_val:,}"
+            except Exception:
+                fine_str = str(fine_val)
+
             table.rows.append(
                 ft.DataRow(
                     cells=[
-                        ft.DataCell(ft.Text(row["driver"], style=s.TABLE_DATA_STYLE)),
-                        ft.DataCell(ft.Text(row["plate_no"], style=s.TABLE_DATA_STYLE)),
-                        ft.DataCell(ft.Text(row["type"], style=s.TABLE_DATA_STYLE)),
-                        ft.DataCell(ft.Text(row["date"], style=s.TABLE_DATA_STYLE)),
-                        ft.DataCell(ft.Text(row["location"], style=s.TABLE_DATA_STYLE)),
-                        ft.DataCell(ft.Text(row["fine"], style=s.TABLE_DATA_STYLE)),
-                        ft.DataCell(ft.Text(row["status"], style=s.TABLE_DATA_STYLE)),
+                        ft.DataCell(ft.Text(row["driver"] or "Unknown", style=s.TABLE_DATA_STYLE)),
+                        ft.DataCell(ft.Text(row["plate_no"] or "N/A", style=s.TABLE_DATA_STYLE)),
+                        ft.DataCell(ft.Text(row["tv_type"], style=s.TABLE_DATA_STYLE)),
+                        ft.DataCell(ft.Text(format_date_value(row["tv_date"]), style=s.TABLE_DATA_STYLE)),
+                        ft.DataCell(ft.Text(location_str, style=s.TABLE_DATA_STYLE)),
+                        ft.DataCell(ft.Text(fine_str, style=s.TABLE_DATA_STYLE)),
+                        ft.DataCell(ft.Text(row["tv_status"], style=s.TABLE_DATA_STYLE)),
                         ft.DataCell(
-                            ft.Row(controls=[
-                                ft.Button(
-                                    # EDIT BUTTON
-                                    content=ft.Text("Edit", color="white", size=12, weight=ft.FontWeight.W_700),
-                                    on_click=show_edit_form,
-                                    style=s.BLUE_BUTTON_STYLE,
-                                    height=32,
-                                ),
-                                ft.Button(
-                                    #\\ DELETE BUTTON
-                                    content=ft.Text("Delete", color="white", size=12, weight=ft.FontWeight.W_700),
-                                    on_click=lambda e: None,
-                                    style=ft.ButtonStyle(
-                                        bgcolor={ft.ControlState.DEFAULT: "#B42318", ft.ControlState.HOVERED: "#dc5b4a"},
-                                        shape=ft.RoundedRectangleBorder(radius=12),
+                            ft.Row(
+                                controls=[
+                                    ft.Button(
+                                        content=ft.Text("Edit", color="white", size=12, weight=ft.FontWeight.W_700),
+                                        on_click=lambda e, tv_id=row["tv_id"]: show_edit_form(tv_id),
+                                        style=s.BLUE_BUTTON_STYLE,
+                                        height=32,
                                     ),
-                                    height=32,
-                                ),
-                            ], spacing=6, tight=True)
+                                    ft.Button(
+                                        content=ft.Text("Delete", color="white", size=12, weight=ft.FontWeight.W_700),
+                                        on_click=lambda e, tv_id=row["tv_id"]: deleteViolation(tv_id),
+                                        style=ft.ButtonStyle(
+                                            bgcolor={ft.ControlState.DEFAULT: "#B42318", ft.ControlState.HOVERED: "#dc5b4a"},
+                                            shape=ft.RoundedRectangleBorder(radius=12),
+                                        ),
+                                        height=32,
+                                    ),
+                                ],
+                                spacing=6,
+                                tight=True,
+                            )
                         ),
                     ]
                 )
@@ -385,6 +488,147 @@ def main(page: ft.Page, sidebar_open=False):
 
         update_pagination_controls()
         table.update()
+
+    def deleteViolation(tv_id):
+        try:
+            violation_db.deleteViolation(tv_id)
+            page.snack_bar = ft.SnackBar(ft.Text("Violation deleted successfully."))
+            page.snack_bar.open = True
+            loadTable(current_page["value"], items_per_page["value"])
+            page.update()
+        except Exception as exc:
+            page.snack_bar = ft.SnackBar(ft.Text(f"Delete failed: {exc}"))
+            page.snack_bar.open = True
+            page.update()
+
+    def saveDetails(e):
+        try:
+            clear_errors()
+
+            tv_id = (fTvId.value or "").strip()
+            license_no = (fLicenseNo.value or "").strip()
+            plate_no = (fPlateNo.value or "").strip()
+            tv_type = (fTvType.value or "").strip()
+            tv_date_raw = (fTvDate.date_field.value or "").strip()
+            street = (fStreet.value or "").strip()
+            barangay = (fBarangay.value or "").strip()
+            city = (fCity.value or "").strip()
+            region = (fRegion.value or "").strip()
+            tv_fine_raw = (fTvFine.value or "").strip()
+            app_officer = (fAppOfficer.value or "").strip()
+            tv_status = (fTvStatus.value or "").strip()
+
+            has_errors = False
+            if not tv_id:
+                fTvId.error.value = "Violation ID is required."
+                has_errors = True
+            if not license_no:
+                fLicenseNo.error.value = "Driver license number is required."
+                has_errors = True
+            if not plate_no:
+                fPlateNo.error.value = "Plate number is required."
+                has_errors = True
+            if not tv_type:
+                fTvType.error.value = "Violation type is required."
+                has_errors = True
+            if not tv_date_raw:
+                fTvDate.error.value = "Date is required."
+                has_errors = True
+            if not street:
+                fStreet.error.value = "Street is required."
+                has_errors = True
+            if not barangay:
+                fBarangay.error.value = "Barangay is required."
+                has_errors = True
+            if not city:
+                fCity.error.value = "City is required."
+                has_errors = True
+            if not region:
+                fRegion.error.value = "Region is required."
+                has_errors = True
+            if not tv_fine_raw:
+                fTvFine.error.value = "Fine amount is required."
+                has_errors = True
+
+            if has_errors:
+                page.update()
+                return
+
+            try:
+                tv_date = datetime.datetime.strptime(tv_date_raw, "%m/%d/%Y").date()
+            except Exception:
+                fTvDate.error.value = "Invalid date (mm/dd/yyyy)"
+                page.update()
+                return
+
+            if tv_date > datetime.date.today():
+                fTvDate.error.value = "Violation date cannot be in the future."
+                page.update()
+                return
+
+            try:
+                tv_fine = int(tv_fine_raw.replace(",", ""))
+                if tv_fine < 0:
+                    fTvFine.error.value = "Fine must be non-negative."
+                    page.update()
+                    return
+            except Exception:
+                fTvFine.error.value = "Fine must be a whole number."
+                page.update()
+                return
+
+            # Verify that the driver license number exists
+            driver_row = db.getDriver(license_no)
+            if not driver_row:
+                fLicenseNo.error.value = "Driver license number does not exist."
+                page.update()
+                return
+
+            # Verify that the plate number exists
+            vehicle_row = vehicle_db.getVehicle(plate_no)
+            if not vehicle_row:
+                fPlateNo.error.value = "Plate number does not exist."
+                page.update()
+                return
+
+            # Verify unique ID on insert
+            if not editingTvId["value"]:
+                existing_vio = violation_db.getViolation(tv_id)
+                if existing_vio:
+                    fTvId.error.value = "Violation ID already exists."
+                    page.update()
+                    return
+
+            data = {
+                "tv_id": tv_id,
+                "tv_type": tv_type,
+                "tv_status": tv_status,
+                "tv_date": tv_date,
+                "tv_fine": tv_fine,
+                "app_officer": app_officer,
+                "tv_street": street,
+                "tv_barangay": barangay,
+                "tv_city": city,
+                "tv_region": region,
+                "plate_no": plate_no,
+                "license_no": license_no
+            }
+
+            if editingTvId["value"]:
+                violation_db.updateViolation(editingTvId["value"], data)
+            else:
+                violation_db.addViolation(data)
+
+            hide_form()
+            loadTable(current_page["value"], items_per_page["value"])
+            page.snack_bar = ft.SnackBar(ft.Text("Violation saved successfully."))
+            page.snack_bar.open = True
+            page.update()
+        except Exception as exc:
+            print("saveDetails error:", exc)
+            page.snack_bar = ft.SnackBar(ft.Text(f"Save failed: {exc}"))
+            page.snack_bar.open = True
+            page.update()
 
     def update_pagination_controls():
         # math to figure out how many pages we need and updating the label
@@ -396,6 +640,7 @@ def main(page: ft.Page, sidebar_open=False):
         next_button.disabled = current_page["value"] >= total_pages
         prev_button.update()
         next_button.update()
+        
         # rebuilding the numeric buttons for navigation
         page_buttons_container.controls.clear()
         start_page = max(1, current_page["value"] - 2)
@@ -580,14 +825,18 @@ def main(page: ft.Page, sidebar_open=False):
                     columns=12,
                     run_spacing=10,
                     controls=[
-                        labeled_field("Driver", text_input(""), col=4),
-                        labeled_field("Vehicle (plate no.)", text_input(""), col=4),
-                        labeled_field("Violation type", text_input(""), col=4),
-                        labeled_field("Date", date_input("mm/dd/yyyy"), col=4),
-                        labeled_field("Location", text_input("City / municipality"), col=4),
-                        labeled_field("Fine amount (PHP)", text_input("e.g. 2000"), col=4),
-                        labeled_field("Apprehending officer", text_input(""), col=4),
-                        labeled_field("Status", dropdown_input(["Unpaid", "Paid", "Contested"]), col=4),
+                        labeled_field("Violation ID", fTvId, col=4),
+                        labeled_field("Driver (license no.)", fLicenseNo, col=4),
+                        labeled_field("Vehicle (plate no.)", fPlateNo, col=4),
+                        labeled_field("Violation type", fTvType, col=4),
+                        labeled_field("Date", fTvDate, col=4),
+                        labeled_field("Street", fStreet, col=3),
+                        labeled_field("Barangay", fBarangay, col=3),
+                        labeled_field("City", fCity, col=3),
+                        labeled_field("Region", fRegion, col=3),
+                        labeled_field("Fine amount (PHP)", fTvFine, col=4),
+                        labeled_field("Apprehending officer", fAppOfficer, col=4),
+                        labeled_field("Status", fTvStatus, col=4),
                     ],
                 ),
                 ft.Row(
@@ -595,7 +844,7 @@ def main(page: ft.Page, sidebar_open=False):
                         ft.Button(
                             content=primary_action_label,
                             style=s.BLUE_BUTTON_STYLE,
-                            on_click=lambda e: None,
+                            on_click=saveDetails,
                         ),
                         ft.Button(
                             content=ft.Text("Cancel", color="#1f2937", weight=ft.FontWeight.W_700),
