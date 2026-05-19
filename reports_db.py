@@ -188,4 +188,36 @@ def get_violation_totals_by_year(year, tv_type=""):
 
 # 7. View all vehicles involved in violations within a given city or region.
 def get_vehicles_in_violations(city_or_region="", search="", tv_type=""):
-    pass
+    query = """
+        SELECT
+            v.plate_no,
+            v.vehicle_type AS v_type,
+            v.make AS v_make,
+            v.model AS v_model,
+            v.color AS v_color,
+            v.year AS v_year,
+            tv.tv_id,
+            tv.tv_type,
+            tv.tv_date,
+            tv.tv_city,
+            tv.tv_region
+        FROM traffic_vio tv
+        JOIN vehicle v ON tv.plate_no = v.plate_no
+        WHERE 1=1
+    """
+    params = []
+
+    if city_or_region:
+        query += " AND (tv.tv_city ILIKE %s OR tv.tv_region ILIKE %s)"
+        params += [f"%{city_or_region}%", f"%{city_or_region}%"]
+
+    if search:
+        query += " AND (v.plate_no ILIKE %s OR tv.tv_id ILIKE %s)"
+        params += [f"%{search}%", f"%{search}%"]
+        
+    if tv_type:
+        query += " AND tv.tv_type = %s"
+        params.append(tv_type)
+
+    query += " ORDER BY tv.tv_date DESC, v.plate_no"
+    return _fetch_all(query, params)

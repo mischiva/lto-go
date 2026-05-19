@@ -700,12 +700,46 @@ def main(page: ft.Page, sidebar_open=False):
         load_section_6,
     )
 
-    # section_7 = build_placeholder_report_card(
-    #     "7",
-    #     "View all vehicles involved in violations",
-    #     "",
-    #     "Coming soon",
-    # )
+    section_7_search = text_input("Search plate no. or violation ID")
+    section_7_city_region = text_input("City or region")
+    section_7_tv_type = dropdown_input(["All types", "Overspeeding", "Reckless driving", "No seatbelt"])
+    section_7_table = build_report_table(["Plate no.", "Vehicle type", "Make/model", "Color", "Violation ID", "Violation type", "Date", "City/Region"])
+    section_7_state = create_pagination_state(section_7_table)
+
+    def load_section_7(e=None):
+        rows = reports_db.get_vehicles_in_violations(
+            city_or_region=clean_text(section_7_city_region.value),
+            search=clean_text(section_7_search.value),
+            tv_type=dropdown_filter_value(section_7_tv_type.value),
+        )
+        set_rows(
+            section_7_state,
+            rows,
+            lambda row: [
+                ft.DataCell(ft.Text(row["plate_no"], style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(row["v_type"], style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(vehicle_name(row), style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(row["v_color"], style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(str(row["tv_id"]), style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(row["tv_type"], style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(str(row["tv_date"]), style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(f"{row['tv_city']}, {row['tv_region']}", style=s.TABLE_DATA_STYLE)),
+            ],
+        )
+
+    section_7 = build_report_card(
+        "7",
+        "View all vehicles involved in violations within a given city or region",
+        "Search by plate number, filter by violation type, or specify a city or region.",
+        [
+            labeled_field("Search", section_7_search, col=3),
+            labeled_field("City/Region", section_7_city_region, col=3),
+            labeled_field("Violation type", section_7_tv_type, col=3),
+            ft.Container(col={"xs": 12, "md": 3}),
+        ],
+        section_7_state,
+        load_section_7,
+    )
 
     main_content = ft.Container(
         content=ft.Column(
@@ -714,7 +748,7 @@ def main(page: ft.Page, sidebar_open=False):
                 ft.Container(height=12),
                 ft.Text("Generate reports", style=s.TITLE_STYLE),
                 ft.Container(height=12),
-                ft.Column(controls=[section_1, section_2, section_3, section_4, section_5, section_6], spacing=18),
+                ft.Column(controls=[section_1, section_2, section_3, section_4, section_5, section_6, section_7], spacing=18),
             ],
             spacing=0,
             scroll=ft.ScrollMode.AUTO,
