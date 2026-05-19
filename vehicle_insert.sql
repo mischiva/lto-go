@@ -49,7 +49,6 @@ INSERT INTO vehicle (plate_no, engine_no, chassis_no, vehicle_type, make, model,
 ('STU 5690', 'ENG-1048', 'CHA-1048', 'Private car', 'Subaru', 'Forester', 2021, 'Blue', 'E85-89-696024'),
 ('VWX 6812', 'ENG-1049', 'CHA-1049', 'Private car', 'Jeep', 'Wrangler', 2023, 'Green', 'J15-67-975229'),
 ('YZA 7924', 'ENG-1050', 'CHA-1050', 'Motorcycle', 'Vespa', 'Sprint', 2022, 'Yellow', 'F75-56-082544'),
--- Multiple Vehicles for some owners
 ('AAA 1111', 'ENG-2001', 'CHA-2001', 'Private car', 'Toyota', 'Vios', 2023, 'White', 'U51-97-877565'),
 ('AAA 2222', 'ENG-2002', 'CHA-2002', 'Motorcycle', 'Honda', 'PCX', 2022, 'Gray', 'U51-97-877565'),
 ('BBB 1111', 'ENG-2003', 'CHA-2003', 'Private car', 'Honda', 'Civic', 2021, 'Red', 'V22-23-548017'),
