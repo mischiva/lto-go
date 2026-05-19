@@ -80,7 +80,6 @@ REPORTS_IMAGE = "media/report.png"
 
 # para tong ang approach ko ay like ito ay react component kunyare
 # tapos may function dito sa styles keme saka lang to cacall / import dun sa home mismo
-# dibaaa wow
 def build_card_content(title: str, description: str, image_path: str) -> ft.Container:
     return ft.Container(
         content=ft.Stack(
