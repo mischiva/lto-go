@@ -147,14 +147,14 @@ def main(page: ft.Page, sidebar_open=False):
             spacing=4,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
-        row.error = error_text
+        row.custom_error = error_text
         row.date_field = date_field
         return row
 
     def labeled_field(label: str, control: ft.Control, col: int = 6) -> ft.Container:
         # adding labels on top of form inputs for better readability
         controls = [ft.Text(label, style=s.LABEL_STYLE), control]
-        err = getattr(control, "error", None)
+        err = getattr(control, "custom_error", None)
         if err is not None:
             controls.append(err)
 
@@ -192,28 +192,28 @@ def main(page: ft.Page, sidebar_open=False):
         return ft.Text("", size=11, color="#B42318")
 
     fTvId = text_input("e.g. V-2025-001")
-    fTvId.error = error_text()
+    fTvId.custom_error = error_text()
     fLicenseNo = text_input("e.g. U51-97-877565")
-    fLicenseNo.error = error_text()
+    fLicenseNo.custom_error = error_text()
     fPlateNo = text_input("e.g. ABC 1234")
-    fPlateNo.error = error_text()
+    fPlateNo.custom_error = error_text()
     fTvType = text_input("e.g. Overspeeding")
-    fTvType.error = error_text()
+    fTvType.custom_error = error_text()
     fTvDate = date_input("mm/dd/yyyy")
     fStreet = text_input("e.g. National Highway")
-    fStreet.error = error_text()
+    fStreet.custom_error = error_text()
     fBarangay = text_input("e.g. Real")
-    fBarangay.error = error_text()
+    fBarangay.custom_error = error_text()
     fCity = text_input("e.g. Calamba")
-    fCity.error = error_text()
+    fCity.custom_error = error_text()
     fRegion = text_input("e.g. Region IV-A")
-    fRegion.error = error_text()
+    fRegion.custom_error = error_text()
     fTvFine = text_input("e.g. 2000")
-    fTvFine.error = error_text()
+    fTvFine.custom_error = error_text()
     fAppOfficer = text_input("e.g. Officer Ramos")
-    fAppOfficer.error = error_text()
+    fAppOfficer.custom_error = error_text()
     fTvStatus = dropdown_input(["Unpaid", "Paid", "Contested"])
-    fTvStatus.error = error_text()
+    fTvStatus.custom_error = error_text()
 
     search_input = text_input("Search by driver or plate")
     search_input.prefix_icon = ft.Icons.SEARCH
@@ -234,8 +234,8 @@ def main(page: ft.Page, sidebar_open=False):
 
     def clear_errors():
         for control in (fTvId, fLicenseNo, fPlateNo, fTvType, fTvDate, fStreet, fBarangay, fCity, fRegion, fTvFine, fAppOfficer, fTvStatus):
-            if getattr(control, "error", None) is not None:
-                control.error.value = ""
+            if getattr(control, "custom_error", None) is not None:
+                control.custom_error.value = ""
 
     def reset_form_values():
         editingTvId["value"] = None
@@ -520,34 +520,34 @@ def main(page: ft.Page, sidebar_open=False):
 
             has_errors = False
             if not tv_id:
-                fTvId.error.value = "Violation ID is required."
+                fTvId.custom_error.value = "Violation ID is required."
                 has_errors = True
             if not license_no:
-                fLicenseNo.error.value = "Driver license number is required."
+                fLicenseNo.custom_error.value = "Driver license number is required."
                 has_errors = True
             if not plate_no:
-                fPlateNo.error.value = "Plate number is required."
+                fPlateNo.custom_error.value = "Plate number is required."
                 has_errors = True
             if not tv_type:
-                fTvType.error.value = "Violation type is required."
+                fTvType.custom_error.value = "Violation type is required."
                 has_errors = True
             if not tv_date_raw:
-                fTvDate.error.value = "Date is required."
+                fTvDate.custom_error.value = "Date is required."
                 has_errors = True
             if not street:
-                fStreet.error.value = "Street is required."
+                fStreet.custom_error.value = "Street is required."
                 has_errors = True
             if not barangay:
-                fBarangay.error.value = "Barangay is required."
+                fBarangay.custom_error.value = "Barangay is required."
                 has_errors = True
             if not city:
-                fCity.error.value = "City is required."
+                fCity.custom_error.value = "City is required."
                 has_errors = True
             if not region:
-                fRegion.error.value = "Region is required."
+                fRegion.custom_error.value = "Region is required."
                 has_errors = True
             if not tv_fine_raw:
-                fTvFine.error.value = "Fine amount is required."
+                fTvFine.custom_error.value = "Fine amount is required."
                 has_errors = True
 
             if has_errors:
@@ -557,37 +557,37 @@ def main(page: ft.Page, sidebar_open=False):
             try:
                 tv_date = datetime.datetime.strptime(tv_date_raw, "%m/%d/%Y").date()
             except Exception:
-                fTvDate.error.value = "Invalid date (mm/dd/yyyy)"
+                fTvDate.custom_error.value = "Invalid date (mm/dd/yyyy)"
                 page.update()
                 return
 
             if tv_date > datetime.date.today():
-                fTvDate.error.value = "Violation date cannot be in the future."
+                fTvDate.custom_error.value = "Violation date cannot be in the future."
                 page.update()
                 return
 
             try:
                 tv_fine = int(tv_fine_raw.replace(",", ""))
                 if tv_fine < 0:
-                    fTvFine.error.value = "Fine must be non-negative."
+                    fTvFine.custom_error.value = "Fine must be non-negative."
                     page.update()
                     return
             except Exception:
-                fTvFine.error.value = "Fine must be a whole number."
+                fTvFine.custom_error.value = "Fine must be a whole number."
                 page.update()
                 return
 
             # Verify that the driver license number exists
             driver_row = db.getDriver(license_no)
             if not driver_row:
-                fLicenseNo.error.value = "Driver license number does not exist."
+                fLicenseNo.custom_error.value = "Driver license number does not exist."
                 page.update()
                 return
 
             # Verify that the plate number exists
             vehicle_row = vehicle_db.getVehicle(plate_no)
             if not vehicle_row:
-                fPlateNo.error.value = "Plate number does not exist."
+                fPlateNo.custom_error.value = "Plate number does not exist."
                 page.update()
                 return
 
@@ -595,7 +595,7 @@ def main(page: ft.Page, sidebar_open=False):
             if not editingTvId["value"]:
                 existing_vio = violation_db.getViolation(tv_id)
                 if existing_vio:
-                    fTvId.error.value = "Violation ID already exists."
+                    fTvId.custom_error.value = "Violation ID already exists."
                     page.update()
                     return
 

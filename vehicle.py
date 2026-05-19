@@ -121,7 +121,7 @@ def main(page: ft.Page, sidebar_open=False):
         # adding labels on top of our inputs and placing them in our responsive grid
         controls = [ft.Text(label, style=LABEL_STYLE), control]
         # if the control has an attached error Text control, add it below the input
-        err = getattr(control, "error", None)
+        err = getattr(control, "custom_error", None)
         if err is not None:
             controls.append(err)
 
@@ -412,27 +412,27 @@ def main(page: ft.Page, sidebar_open=False):
             # clear previous error messages
             for c in (fPlateNo, fEngineNo, fChassisNo, fMake, fModel, fYear, fOwner):
                 try:
-                    if getattr(c, "error", None) is not None:
-                        c.error.value = ""
+                    if getattr(c, "custom_error", None) is not None:
+                        c.custom_error.value = ""
                 except Exception:
                     pass
 
             if errors:
                 # set inline error messages for the first failing fields
                 if not data["plate_no"].strip():
-                    fPlateNo.error.value = "Plate number is required."
+                    fPlateNo.custom_error.value = "Plate number is required."
                 if not data["engine_no"].strip():
-                    fEngineNo.error.value = "Engine number is required."
+                    fEngineNo.custom_error.value = "Engine number is required."
                 if not data["chassis_no"].strip():
-                    fChassisNo.error.value = "Chassis number is required."
+                    fChassisNo.custom_error.value = "Chassis number is required."
                 if not data["make"].strip():
-                    fMake.error.value = "Make is required."
+                    fMake.custom_error.value = "Make is required."
                 if not data["model"].strip():
-                    fModel.error.value = "Model is required."
+                    fModel.custom_error.value = "Model is required."
                 if not data["owner_id"].strip():
-                    fOwner.error.value = "Registered owner is required."
+                    fOwner.custom_error.value = "Registered owner is required."
                 if data["year"] == "":
-                    fYear.error.value = "Year is required."
+                    fYear.custom_error.value = "Year is required."
                 page.update()
                 return
 
@@ -444,12 +444,12 @@ def main(page: ft.Page, sidebar_open=False):
             if editingPlateNo["value"]:
                 # if changing plate no to another existing plate -> error
                 if data["plate_no"] != editingPlateNo["value"] and existing:
-                    fPlateNo.error.value = "A vehicle with that plate number already exists."
+                    fPlateNo.custom_error.value = "A vehicle with that plate number already exists."
                     page.update()
                     return
             else:
                 if existing:
-                    fPlateNo.error.value = "A vehicle with that plate number already exists."
+                    fPlateNo.custom_error.value = "A vehicle with that plate number already exists."
                     page.update()
                     return
 
@@ -503,21 +503,21 @@ def main(page: ft.Page, sidebar_open=False):
         fOwner.update()
 
     fPlateNo = text_input("e.g. ABC 1234")
-    fPlateNo.error = ft.Text("", color="red", size=12)
+    fPlateNo.custom_error = ft.Text("", color="red", size=12)
     fEngineNo = text_input("")
-    fEngineNo.error = ft.Text("", color="red", size=12)
+    fEngineNo.custom_error = ft.Text("", color="red", size=12)
     fChassisNo = text_input("")
-    fChassisNo.error = ft.Text("", color="red", size=12)
+    fChassisNo.custom_error = ft.Text("", color="red", size=12)
     fVehicleType = dropdown_input(["Motorcycle", "Private car", "PUV"])
     fMake = text_input("e.g. Toyota")
-    fMake.error = ft.Text("", color="red", size=12)
+    fMake.custom_error = ft.Text("", color="red", size=12)
     fModel = text_input("e.g. Vios")
-    fModel.error = ft.Text("", color="red", size=12)
+    fModel.custom_error = ft.Text("", color="red", size=12)
     fYear = text_input("e.g. 2020")
-    fYear.error = ft.Text("", color="red", size=12)
+    fYear.custom_error = ft.Text("", color="red", size=12)
     fColor = text_input("e.g. White")
     fOwner = dropdown_input([])
-    fOwner.error = ft.Text("", color="red", size=12)
+    fOwner.custom_error = ft.Text("", color="red", size=12)
     editingPlateNo = {"value": None}
 
     def go_to_previous_page(e):
@@ -703,11 +703,6 @@ def main(page: ft.Page, sidebar_open=False):
                             content=primary_action_label,
                             style=BLUE_BUTTON_STYLE,
                             on_click=saveDetails,
-                        ),
-                        ft.Button(
-                            content=ft.Text("Delete", color="white", weight=ft.FontWeight.W_700),
-                            style=DANGER_BUTTON_STYLE,
-                            on_click=lambda e: deleteVehicle(editingPlateNo["value"]),
                         ),
                         ft.Button(
                             content=ft.Text("Cancel", color="#1f2937", weight=ft.FontWeight.W_700),

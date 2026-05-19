@@ -142,13 +142,13 @@ def main(page: ft.Page, sidebar_open=False):
             spacing=4,
             vertical_alignment=ft.CrossAxisAlignment.CENTER,
         )
-        row.error = error_text
+        row.custom_error = error_text
         row.date_field = date_field
         return row
 
     def labeled_field(label: str, control: ft.Control, col: int = 6) -> ft.Container:
         controls = [ft.Text(label, style=s.LABEL_STYLE), control]
-        err = getattr(control, "error", None)
+        err = getattr(control, "custom_error", None)
         if err is not None:
             controls.append(err)
 
@@ -193,13 +193,13 @@ def main(page: ft.Page, sidebar_open=False):
         return ft.Text("", size=11, color="#B42318")
 
     fRegNo = text_input("e.g. 48290173")
-    fRegNo.error = error_text()
+    fRegNo.custom_error = error_text()
     fPlateNo = text_input("e.g. ABC 1234")
-    fPlateNo.error = error_text()
+    fPlateNo.custom_error = error_text()
     fRegDate = date_input("mm/dd/yyyy")
     fExpiryDate = date_input("mm/dd/yyyy")
     fStatus = dropdown_input(["Active", "Expired", "Suspended"])
-    fStatus.error = error_text()
+    fStatus.custom_error = error_text()
 
     searchInput = text_input("Search by reg no., plate, vehicle, or owner")
     searchInput.prefix_icon = ft.Icons.SEARCH
@@ -207,8 +207,8 @@ def main(page: ft.Page, sidebar_open=False):
 
     def clear_errors():
         for control in (fRegNo, fPlateNo, fRegDate, fExpiryDate, fStatus):
-            if getattr(control, "error", None) is not None:
-                control.error.value = ""
+            if getattr(control, "custom_error", None) is not None:
+                control.custom_error.value = ""
 
     def reset_form_values():
         editingRegNo["value"] = None
@@ -548,19 +548,19 @@ def main(page: ft.Page, sidebar_open=False):
 
             has_errors = False
             if not reg_no:
-                fRegNo.error.value = "Registration number is required."
+                fRegNo.custom_error.value = "Registration number is required."
                 has_errors = True
             if not plate_no:
-                fPlateNo.error.value = "Plate number is required."
+                fPlateNo.custom_error.value = "Plate number is required."
                 has_errors = True
             if not reg_date_raw:
-                fRegDate.error.value = "Registration date is required."
+                fRegDate.custom_error.value = "Registration date is required."
                 has_errors = True
             if not expiry_date_raw:
-                fExpiryDate.error.value = "Expiry date is required."
+                fExpiryDate.custom_error.value = "Expiry date is required."
                 has_errors = True
             if not status:
-                fStatus.error.value = "Status is required."
+                fStatus.custom_error.value = "Status is required."
                 has_errors = True
 
             if has_errors:
@@ -570,29 +570,29 @@ def main(page: ft.Page, sidebar_open=False):
             try:
                 reg_date = datetime.datetime.strptime(reg_date_raw, "%m/%d/%Y").date()
             except Exception:
-                fRegDate.error.value = "Invalid date (mm/dd/yyyy)"
+                fRegDate.custom_error.value = "Invalid date (mm/dd/yyyy)"
                 page.update()
                 return
 
             try:
                 expiry_date = datetime.datetime.strptime(expiry_date_raw, "%m/%d/%Y").date()
             except Exception:
-                fExpiryDate.error.value = "Invalid date (mm/dd/yyyy)"
+                fExpiryDate.custom_error.value = "Invalid date (mm/dd/yyyy)"
                 page.update()
                 return
 
             if reg_date > datetime.date.today():
-                fRegDate.error.value = "Registration date cannot be in the future."
+                fRegDate.custom_error.value = "Registration date cannot be in the future."
                 page.update()
                 return
 
             if reg_date > expiry_date:
-                fExpiryDate.error.value = "Expiry must be after registration date."
+                fExpiryDate.custom_error.value = "Expiry must be after registration date."
                 page.update()
                 return
 
             if not vehicle_db.getVehicle(plate_no):
-                fPlateNo.error.value = "That plate number does not exist in vehicles."
+                fPlateNo.custom_error.value = "That plate number does not exist in vehicles."
                 page.update()
                 return
 
@@ -601,26 +601,26 @@ def main(page: ft.Page, sidebar_open=False):
 
             if editingRegNo["value"]:
                 if reg_no != editingRegNo["value"] and existing_reg:
-                    fRegNo.error.value = "Registration number already exists."
+                    fRegNo.custom_error.value = "Registration number already exists."
                     page.update()
                     return
                 if existing_plate and existing_plate["reg_no"] != editingRegNo["value"]:
-                    fPlateNo.error.value = "That vehicle already has a registration."
+                    fPlateNo.custom_error.value = "That vehicle already has a registration."
                     page.update()
                     return
             else:
                 if existing_reg:
-                    fRegNo.error.value = "Registration number already exists."
+                    fRegNo.custom_error.value = "Registration number already exists."
                     page.update()
                     return
                 if existing_plate:
-                    fPlateNo.error.value = "That vehicle already has a registration."
+                    fPlateNo.custom_error.value = "That vehicle already has a registration."
                     page.update()
                     return
 
             if expiry_date <= datetime.date.today():
                 status = "Expired"
-                fExpiryDate.error.value = "Registration already expired; status set to Expired."
+                fExpiryDate.custom_error.value = "Registration already expired; status set to Expired."
 
             data = {
                 "reg_no": reg_no,
