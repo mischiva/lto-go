@@ -53,7 +53,12 @@ def getDrivers(search="", license_type="", license_status="", sex=""):
 def getDriver(license_no): # only gets one driver (using license_no)
     with connectDatabase() as server: # connects to postgres server
         with server.cursor(cursor_factory=RealDictCursor) as cur: #RealDictCursor returns objects, not lists
-            cur.execute("SELECT * FROM driver WHERE license_no = %s", (license_no,)) # execute the sql query
+            cur.execute("""
+                SELECT d.*, da.d_street, da.d_barangay, da.d_city, da.d_region 
+                FROM driver d
+                LEFT JOIN driver_address da ON d.license_no = da.license_no
+                WHERE d.license_no = %s
+            """, (license_no,)) # execute the sql query
             return cur.fetchone() # return the data from the query
 
 def addDriver(data: dict): # add driver takes a parameter of dictionary with key value pairs 
@@ -70,6 +75,19 @@ def addDriver(data: dict): # add driver takes a parameter of dictionary with key
                 data["license_type"], data["license_status"],
                 data["license_issued"], data["license_expire"]
             ))
+            
+            # Save address data to driver_address table
+            d_street = data.get("d_street", "").strip() or "N/A"
+            d_barangay = data.get("d_barangay", "").strip() or "N/A"
+            d_city = data.get("d_city", "").strip() or "N/A"
+            d_region = data.get("d_region", "").strip() or "N/A"
+            d_address = f"{d_street}, {d_barangay}, {d_city}, {d_region}"
+            
+            cur.execute("DELETE FROM driver_address WHERE license_no = %s", (data["license_no"],))
+            cur.execute("""
+                INSERT INTO driver_address (license_no, d_address, d_street, d_barangay, d_city, d_region)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (data["license_no"], d_address, d_street, d_barangay, d_city, d_region))
         server.commit() # saves the recently executed sql command
 
 def updateDriver(license_no, data: dict): # updates a driver's data using license_no
@@ -79,14 +97,28 @@ def updateDriver(license_no, data: dict): # updates a driver's data using licens
                 UPDATE driver SET
                     last_name=%s, first_name=%s, middle_name=%s, suffix=%s,
                     dob=%s, sex=%s, license_type=%s, license_status=%s,
-                    license_issued=%s, license_expire=%s
+                    license_issued=%s, license_expire=%s, license_no=%s
                 WHERE license_no=%s
             """, (
                 data["last_name"], data["first_name"], data["middle_name"],
                 data["suffix"], data["dob"], data["sex"], data["license_type"],
                 data["license_status"], data["license_issued"],
-                data["license_expire"], license_no
+                data["license_expire"], data["license_no"], license_no
             ))
+            
+            # Save address data to driver_address table
+            d_street = data.get("d_street", "").strip() or "N/A"
+            d_barangay = data.get("d_barangay", "").strip() or "N/A"
+            d_city = data.get("d_city", "").strip() or "N/A"
+            d_region = data.get("d_region", "").strip() or "N/A"
+            d_address = f"{d_street}, {d_barangay}, {d_city}, {d_region}"
+            
+            cur.execute("DELETE FROM driver_address WHERE license_no = %s", (data["license_no"],))
+            cur.execute("DELETE FROM driver_address WHERE license_no = %s", (license_no,))
+            cur.execute("""
+                INSERT INTO driver_address (license_no, d_address, d_street, d_barangay, d_city, d_region)
+                VALUES (%s, %s, %s, %s, %s, %s)
+            """, (data["license_no"], d_address, d_street, d_barangay, d_city, d_region))
         server.commit()
 
 def deleteDriver(license_no): # deletes a driver from the database using license_no
