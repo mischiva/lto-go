@@ -158,9 +158,7 @@ def main(page: ft.Page, sidebar_open=False):
     def labeled_field(label: str, control: ft.Control, col: int = 6) -> ft.Container:
         # wrapping input controls with a descriptive label for better usability
         controls = [ft.Text(label, style=LABEL_STYLE), control]
-        err = getattr(control, "error_text", None)
-        if err is None:
-            err = getattr(control, "error", None)
+        err = getattr(control, "custom_error", None)
         if err is not None:
             controls.append(err)
 
@@ -466,9 +464,7 @@ def main(page: ft.Page, sidebar_open=False):
             # clear previous errors
             for c in (fLicenseNo, fLastName, fFirstName, fDob, fSex, fLicenseType, fLicenseStatus, fLicenseIssued, fLicenseExpiry, fStreet, fBarangay, fCity, fRegion):
                 try:
-                    err = getattr(c, "error_text", None)
-                    if err is None:
-                        err = getattr(c, "error", None)
+                    err = getattr(c, "custom_error", None)
                     if err is not None:
                         err.value = ""
                 except Exception:
@@ -477,31 +473,31 @@ def main(page: ft.Page, sidebar_open=False):
             if errors:
                 print("validation errors:", errors)
                 if not data["license_no"].strip():
-                    fLicenseNo.error_text.value = "License number is required."
+                    fLicenseNo.custom_error.value = "License number is required."
                 if not data["last_name"].strip():
-                    fLastName.error_text.value = "Last name is required."
+                    fLastName.custom_error.value = "Last name is required."
                 if not data["first_name"].strip():
-                    fFirstName.error_text.value = "First name is required."
+                    fFirstName.custom_error.value = "First name is required."
                 if not data["dob"].strip():
-                    fDob.error_text.value = "Date of birth is required."
+                    fDob.custom_error.value = "Date of birth is required."
                 if not data["sex"].strip():
-                    fSex.error_text.value = "Sex is required."
+                    fSex.custom_error.value = "Sex is required."
                 if not data["license_type"].strip():
-                    fLicenseType.error_text.value = "License type is required."
+                    fLicenseType.custom_error.value = "License type is required."
                 if not data["license_status"].strip():
-                    fLicenseStatus.error_text.value = "License status is required."
+                    fLicenseStatus.custom_error.value = "License status is required."
                 if not data["license_issued"].strip():
-                    fLicenseIssued.error_text.value = "License issued date is required."
+                    fLicenseIssued.custom_error.value = "License issued date is required."
                 if not data["license_expire"].strip():
-                    fLicenseExpiry.error_text.value = "License expiry date is required."
+                    fLicenseExpiry.custom_error.value = "License expiry date is required."
                 if not data["d_street"].strip():
-                    fStreet.error_text.value = "Street is required."
+                    fStreet.custom_error.value = "Street is required."
                 if not data["d_barangay"].strip():
-                    fBarangay.error_text.value = "Barangay is required."
+                    fBarangay.custom_error.value = "Barangay is required."
                 if not data["d_city"].strip():
-                    fCity.error_text.value = "City is required."
+                    fCity.custom_error.value = "City is required."
                 if not data["d_region"].strip():
-                    fRegion.error_text.value = "Region is required."
+                    fRegion.custom_error.value = "Region is required."
                 page.update()
                 return
 
@@ -509,12 +505,12 @@ def main(page: ft.Page, sidebar_open=False):
             existing = db.getDriver(data["license_no"]) if data["license_no"] else None
             if editingLicenseNo["value"]:
                 if data["license_no"] != editingLicenseNo["value"] and existing:
-                    fLicenseNo.error.value = "A driver with that license number already exists."
+                    fLicenseNo.custom_error.value = "A driver with that license number already exists."
                     page.update()
                     return
             else:
                 if existing:
-                    fLicenseNo.error.value = "A driver with that license number already exists."
+                    fLicenseNo.custom_error.value = "A driver with that license number already exists."
                     page.update()
                     return
 
@@ -525,7 +521,7 @@ def main(page: ft.Page, sidebar_open=False):
                     try:
                         dob_date = datetime.datetime.strptime(data["dob"], "%m/%d/%Y").date()
                     except Exception:
-                        fDob.error.value = "Invalid date (mm/dd/yyyy)"
+                        fDob.custom_error.value = "Invalid date (mm/dd/yyyy)"
                         page.update()
                         return
                 data["dob"] = dob_date
@@ -537,19 +533,19 @@ def main(page: ft.Page, sidebar_open=False):
                     try:
                         issued_date = datetime.datetime.strptime(data["license_issued"], "%m/%d/%Y").date()
                     except Exception:
-                        fLicenseIssued.error.value = "Invalid date (mm/dd/yyyy)"
+                        fLicenseIssued.custom_error.value = "Invalid date (mm/dd/yyyy)"
                         page.update()
                         return
                 if data["license_expire"]:
                     try:
                         expire_date = datetime.datetime.strptime(data["license_expire"], "%m/%d/%Y").date()
                     except Exception:
-                        fLicenseExpiry.error.value = "Invalid date (mm/dd/yyyy)"
+                        fLicenseExpiry.custom_error.value = "Invalid date (mm/dd/yyyy)"
                         page.update()
                         return
 
                 if issued_date and expire_date and issued_date > expire_date:
-                    fLicenseExpiry.error.value = "Expiry must be after issued date."
+                    fLicenseExpiry.custom_error.value = "Expiry must be after issued date."
                     page.update()
                     return
 
@@ -557,7 +553,7 @@ def main(page: ft.Page, sidebar_open=False):
                 if expire_date and expire_date <= today:
                     data["license_status"] = "Expired"
                     # show inline note under expiry
-                    fLicenseExpiry.error.value = "License already expired; status set to Expired."
+                    fLicenseExpiry.custom_error.value = "License already expired; status set to Expired."
                     # continue to save (status updated)
                 
                 # Update date fields in data with correct date objects
@@ -911,47 +907,48 @@ def main(page: ft.Page, sidebar_open=False):
         bgcolor="white",
     )
 
-    # this field is for forms, we just assign them variable names so we can access it later on
-    fLastName      = text_input("e.g. Dela Cruz") 
-    fFirstName     = text_input("e.g. Juan")
-    fMiddleName    = text_input("e.g. Magtanggol")
-    fSuffix        = text_input("Jr., Sr., III")
     def field_error():
         return ft.Text("", size=11, color="#B42318")
+
+    # this field is for forms, we just assign them variable names so we can access it later on
+    fLastName      = text_input("e.g. Dela Cruz") 
+    fLastName.custom_error = field_error()
+    fFirstName     = text_input("e.g. Juan")
+    fFirstName.custom_error = field_error()
+    fMiddleName    = text_input("e.g. Magtanggol")
+    fSuffix        = text_input("Jr., Sr., III")
 
     def clear_errors():
         for control in (fLicenseNo, fLastName, fFirstName, fDob, fSex, fLicenseType, fLicenseStatus, fLicenseIssued, fLicenseExpiry, fStreet, fBarangay, fCity, fRegion):
             try:
-                err = getattr(control, "error_text", None)
-                if err is None:
-                    err = getattr(control, "error", None)
+                err = getattr(control, "custom_error", None)
                 if err is not None:
                     err.value = ""
             except Exception:
                 pass
 
     fLicenseNo = text_input("A00-00-000000")
-    fLicenseNo.error_text = field_error()
+    fLicenseNo.custom_error = field_error()
     fDob           = date_input("mm/dd/yyyy")
-    fDob.error_text = field_error()
+    fDob.custom_error     = field_error()
     fSex           = dropdown_input(["M - Male", "F - Female"])
-    fSex.error_text = field_error()
+    fSex.custom_error     = field_error()
     fLicenseType   = dropdown_input(["Non-Professional", "Professional", "Student"])
-    fLicenseType.error_text = field_error()
+    fLicenseType.custom_error = field_error()
     fLicenseStatus = dropdown_input(["Valid", "Expired", "Suspended", "Revoked"])
-    fLicenseStatus.error_text = field_error()
+    fLicenseStatus.custom_error = field_error()
     fLicenseIssued = date_input("mm/dd/yyyy")
-    fLicenseIssued.error_text = field_error()
+    fLicenseIssued.custom_error = field_error()
     fLicenseExpiry = date_input("mm/dd/yyyy")
-    fLicenseExpiry.error_text = field_error()
+    fLicenseExpiry.custom_error = field_error()
     fStreet        = text_input("e.g. 12 Rizal St.")
-    fStreet.error_text = field_error()
+    fStreet.custom_error  = field_error()
     fBarangay      = text_input("e.g. Batong Malake")
-    fBarangay.error_text = field_error()
+    fBarangay.custom_error = field_error()
     fCity          = text_input("e.g. Los Banos")
-    fCity.error_text = field_error()
+    fCity.custom_error    = field_error()
     fRegion        = text_input("e.g. Region IV-A")
-    fRegion.error_text = field_error()
+    fRegion.custom_error  = field_error()
     # tracking the specific record being updated
     editingLicenseNo = {"value": None}
     # the large form container used for creating or updating records
