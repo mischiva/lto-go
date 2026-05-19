@@ -549,7 +549,7 @@ def main(page: ft.Page, sidebar_open=False):
             ],
         )
 
-    section_4_search = text_input("Search driver or license no.")
+    section_4_search = text_input("Search driver name or license no.")
     section_4_table = build_report_table(["License no.", "Driver name", "Age", "Sex", "License type", "Status", "Expiry date"])
     section_4_state = create_pagination_state(section_4_table)
 
@@ -593,7 +593,6 @@ def main(page: ft.Page, sidebar_open=False):
         "Search a driver and list the vehicles they own.",
         [
             labeled_field("Search", section_2_search, col=5),
-            labeled_field("Driver license no.", section_2_license_no, col=4),
             ft.Container(col={"xs": 12, "md": 3}),
         ],
         section_2_state,
@@ -624,64 +623,89 @@ def main(page: ft.Page, sidebar_open=False):
         load_section_4,
     )
 
-    def build_placeholder_report_card(number: str, title: str, description: str, message: str) -> ft.Container:
-        return ft.Container(
-            content=ft.Column(
-                controls=[
-                    build_section_header(number, title),
-                    ft.Container(
-                        content=ft.Column(
-                            controls=[
-                                ft.Text(description, style=ft.TextStyle(font_family="Lato", size=13, color=s.COLOR_TEXT_HINT)),
-                                ft.Container(
-                                    content=ft.Text(
-                                        message,
-                                        style=ft.TextStyle(
-                                            font_family="Lato",
-                                            size=13,
-                                            color=s.COLOR_TEXT_PRIMARY,
-                                            weight=ft.FontWeight.W_600,
-                                        ),
-                                    ),
-                                    padding=16,
-                                    bgcolor="#f8f9fa",
-                                    border_radius=12,
-                                    border=ft.border.all(1, s.COLOR_BORDER),
-                                ),
-                            ],
-                            spacing=12,
-                        ),
-                        padding=ft.Padding.symmetric(horizontal=16, vertical=16),
-                    ),
-                ],
-                spacing=0,
-            ),
-            border=ft.border.all(1, s.COLOR_BORDER),
-            border_radius=14,
-            clip_behavior=ft.ClipBehavior.ANTI_ALIAS,
-            bgcolor="#ffffff",
+    section_5_search = text_input("Search driver name or license no.")
+    section_5_start_date_row, section_5_start_date = date_input("Start date")
+    section_5_end_date_row, section_5_end_date = date_input("End date")
+    section_5_table = build_report_table(["Violation ID", "License no.", "Plate no.", "Type", "Status", "Date", "Fine", "Officer", "Location"])
+    section_5_state = create_pagination_state(section_5_table)
+
+    def load_section_5(e=None):
+        rows = reports_db.get_violations_by_driver(
+            search=clean_text(section_5_search.value),
+            start_date=parse_date(section_5_start_date.value),
+            end_date=parse_date(section_5_end_date.value),
+        )
+        set_rows(
+            section_5_state,
+            rows,
+            lambda row: [
+                ft.DataCell(ft.Text(str(row["tv_id"]), style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(row["license_no"], style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(row["plate_no"], style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(row["tv_type"], style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(row["tv_status"], style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(str(row["tv_date"]), style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(str(row["tv_fine"]), style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(row["app_officer"], style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(f"{row['tv_street']}, {row['tv_barangay']}, {row['tv_city']}", style=s.TABLE_DATA_STYLE)),
+            ],
         )
 
-    section_5 = build_placeholder_report_card(
+    section_6_year = text_input("Year")
+    section_6_tv_type = dropdown_input(["All types", "Overspeeding", "Reckless driving", "No seatbelt"])
+    section_6_table = build_report_table(["License no.", "Violation Type", "Count"])
+    section_6_state = create_pagination_state(section_6_table)
+
+    def load_section_6(e=None):
+        year_value = parse_int(section_6_year.value)
+        if not year_value:
+            year_value = datetime.datetime.now().year
+        rows = reports_db.get_violation_totals_by_year(
+            year=year_value,
+            tv_type=dropdown_filter_value(section_6_tv_type.value),
+        )
+        set_rows(
+            section_6_state,
+            rows,
+            lambda row: [
+                ft.DataCell(ft.Text(row["license_no"], style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(row["tv_type"], style=s.TABLE_DATA_STYLE)),
+                ft.DataCell(ft.Text(str(row["violation_count"]), style=s.TABLE_DATA_STYLE)),
+            ],
+        )
+
+    section_5 = build_report_card(
         "5",
-        "View all traffic violations committed by a given driver",
-        "",
-        "Gabe can u do this after u finish violations (di ko magawa since violations need nito)",
+        "View all traffic violations committed by a given driver within a specified date range",
+        "Search a driver by name or license and filter violations by date range.",
+        [
+            labeled_field("Search", section_5_search, col=4),
+            labeled_field("Start date", section_5_start_date_row, col=4),
+            labeled_field("End date", section_5_end_date_row, col=4),
+        ],
+        section_5_state,
+        load_section_5,
     )
 
-    section_6 = build_placeholder_report_card(
+    section_6 = build_report_card(
         "6",
         "View the total number of violations per violation type",
-        "",
-        "Gabe can u do this after u finish violations (di ko magawa since violations need nito)",
+        "Enter a year and view violation counts grouped by driver and violation type.",
+        [
+            labeled_field("Year", section_6_year, col=3),
+            labeled_field("Violation type", section_6_tv_type, col=3),
+            ft.Container(col={"xs": 12, "md": 6}),
+        ],
+        section_6_state,
+        load_section_6,
     )
 
-    section_7 = build_placeholder_report_card(
-        "7",
-        "View all vehicles involved in violations",
-        "",
-        "Gabe can u do this after u finish violations (di ko magawa since violations need nito)",
-    )
+    # section_7 = build_placeholder_report_card(
+    #     "7",
+    #     "View all vehicles involved in violations",
+    #     "",
+    #     "Coming soon",
+    # )
 
     main_content = ft.Container(
         content=ft.Column(
@@ -690,7 +714,7 @@ def main(page: ft.Page, sidebar_open=False):
                 ft.Container(height=12),
                 ft.Text("Generate reports", style=s.TITLE_STYLE),
                 ft.Container(height=12),
-                ft.Column(controls=[section_1, section_2, section_3, section_4, section_5, section_6, section_7], spacing=18),
+                ft.Column(controls=[section_1, section_2, section_3, section_4, section_5, section_6], spacing=18),
             ],
             spacing=0,
             scroll=ft.ScrollMode.AUTO,

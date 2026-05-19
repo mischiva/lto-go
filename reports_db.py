@@ -115,26 +115,14 @@ def get_vehicles_with_expired_registrations(as_of_date):
 
 
 # 4. View all drivers with expired or suspended licenses.
-def get_expired_or_suspended_drivers(search="", license_status="", sex="", min_age=None, max_age=None):
-    query = "SELECT license_no, last_name, first_name, middle_name, suffix, dob, DATE_PART('year', AGE(dob))::int AS age, sex, license_type, license_status, license_issued, license_expire FROM driver WHERE license_status='Expired' OR license_status='Suspended'"
+def get_expired_or_suspended_drivers(search=""):
+    query = "SELECT license_no, last_name, first_name, middle_name, suffix, dob, DATE_PART('year', AGE(dob))::int AS age, sex, license_type, license_status, license_issued, license_expire FROM driver WHERE (license_status='Expired' OR license_status='Suspended')"
     params = []
     clauses = []
 
     if search:
         clauses.append("(LOWER(license_no) LIKE LOWER(%s) OR LOWER(CONCAT(last_name, ', ', first_name)) LIKE LOWER(%s) OR LOWER(CONCAT(first_name, ' ', last_name)) LIKE LOWER(%s))")
         params += [f"%{search}%", f"%{search}%", f"%{search}%"]
-    if license_status and license_status != "Expired or Suspended":
-        clauses.append("license_status = %s")
-        params.append(license_status)
-    if sex:
-        clauses.append("sex = %s")
-        params.append(sex)
-    if min_age is not None:
-        clauses.append("DATE_PART('year', AGE(dob))::int >= %s")
-        params.append(min_age)
-    if max_age is not None:
-        clauses.append("DATE_PART('year', AGE(dob))::int <= %s")
-        params.append(max_age)
 
     if clauses:
         query += " AND " + " AND ".join(clauses)
@@ -143,13 +131,59 @@ def get_expired_or_suspended_drivers(search="", license_status="", sex="", min_a
 
 
 # 5. View all traffic violations committed by a given driver within a date range.
-def get_violations_by_driver(search="", license_no="", start_date=None, end_date=None, tv_type=""):
-    pass
+def get_violations_by_driver(search="", start_date=None, end_date=None):
+    query = """
+        SELECT
+            tv.tv_id,
+            tv.tv_type,
+            tv.tv_status,
+            tv.tv_date,
+            tv.tv_fine,
+            tv.app_officer,
+            tv.tv_street,
+            tv.tv_barangay,
+            tv.tv_city,
+            tv.tv_region,
+            tv.plate_no,
+            tv.license_no,
+            d.last_name || ', ' || d.first_name || ' ' || LEFT(COALESCE(d.middle_name, ''), 1) || '.' AS driver
+        FROM traffic_vio tv
+        LEFT JOIN driver d ON tv.license_no = d.license_no
+        WHERE 1=1
+    """
+    params = []
+
+    if search:
+        query += " AND (d.last_name ILIKE %s OR d.first_name ILIKE %s OR tv.plate_no ILIKE %s OR tv.license_no ILIKE %s)"
+        params += [f"%{search}%", f"%{search}%", f"%{search}%", f"%{search}%"]
+
+    if start_date is not None and end_date is not None:
+        query += " AND tv.tv_date BETWEEN %s AND %s"
+        params.append(start_date)
+        params.append(end_date)
+
+    query += " ORDER BY tv.tv_date DESC, tv.tv_id DESC"
+    return _fetch_all(query, params)
 
 
 # 6. View the total number of violations per violation type for a given year.
 def get_violation_totals_by_year(year, tv_type=""):
-    pass
+    query = """
+        SELECT
+            tv.license_no,
+            tv.tv_type,
+            COUNT(*) AS violation_count
+        FROM traffic_vio tv
+        WHERE EXTRACT(YEAR FROM tv.tv_date) = %s
+    """
+    params = [year]
+
+    if tv_type:
+        query += " AND tv.tv_type = %s"
+        params.append(tv_type)
+
+    query += " GROUP BY tv.license_no, tv.tv_type ORDER BY violation_count DESC, tv.license_no"
+    return _fetch_all(query, params)
 
 
 # 7. View all vehicles involved in violations within a given city or region.
